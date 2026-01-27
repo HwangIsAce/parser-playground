@@ -9,10 +9,8 @@ from core.models.parse_result import ParseResult, Block
 class ChandraParser(BaseParser):
     """Parser using Chandra OCR model."""
     
-    _model = None
-    _processor = None
+    _inference_manager = None
     _model_loaded = False
-    _generate_hf = None
     _parse_markdown = None
     
     def __init__(self, config=None):
@@ -59,22 +57,15 @@ class ChandraParser(BaseParser):
             )
         
         try:
-            from transformers import AutoModel, AutoProcessor
-            from chandra.model.hf import generate_hf
+            from chandra.model import InferenceManager
             from chandra.output import parse_markdown
             
             import torch
             
-            # Load model and processor
-            cls._model = AutoModel.from_pretrained(
-                "datalab-to/chandra",
-                torch_dtype=torch.bfloat16,
-                device_map="auto"
-            )
-            cls._processor = AutoProcessor.from_pretrained("datalab-to/chandra")
-            
-            # Store utility functions
-            cls._generate_hf = generate_hf
+            # Use InferenceManager as per Hugging Face documentation
+            # https://huggingface.co/datalab-to/chandra
+            # This handles model loading and generation internally
+            cls._inference_manager = InferenceManager(method="hf")
             cls._parse_markdown = parse_markdown
             
             cls._model_loaded = True
@@ -135,11 +126,12 @@ class ChandraParser(BaseParser):
         # Prepare batch
         batch = [BatchInputItem(image=image, prompt_type="ocr_layout")]
         
-        # Generate result
-        result = self._generate_hf(batch, self._model)[0]
+        # Generate result using InferenceManager
+        # This follows the Hugging Face documentation example
+        result = ChandraParser._inference_manager.generate(batch)[0]
         
         # Parse markdown
-        markdown = self._parse_markdown(result.raw)
+        markdown = ChandraParser._parse_markdown(result.raw)
         
         # Convert to blocks
         blocks = [

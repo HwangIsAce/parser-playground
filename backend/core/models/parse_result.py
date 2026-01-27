@@ -23,12 +23,41 @@ class ParseResult:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
-        raise NotImplementedError
+        return {
+            "document_id": self.document_id,
+            "blocks": [
+                {
+                    "type": block.type,
+                    "text": block.text,
+                    "bbox": block.bbox,
+                    "metadata": block.metadata,
+                }
+                for block in self.blocks
+            ],
+            "metadata": self.metadata,
+        }
     
     def to_html(self) -> str:
         """Convert to HTML format."""
-        raise NotImplementedError
+        html_parts = ["<div class='parse-result'>"]
+        for block in self.blocks:
+            if block.type == "text":
+                html_parts.append(f"<p>{block.text}</p>")
+            elif block.type == "table":
+                html_parts.append(f"<table><tr><td>{block.text}</td></tr></table>")
+            else:
+                html_parts.append(f"<div class='{block.type}'>{block.text}</div>")
+        html_parts.append("</div>")
+        return "\n".join(html_parts)
     
     def to_markdown(self) -> str:
         """Convert to Markdown format."""
-        raise NotImplementedError
+        markdown_parts = []
+        for block in self.blocks:
+            if block.type == "text":
+                markdown_parts.append(block.text)
+            elif block.type == "table":
+                markdown_parts.append(f"\n{block.text}\n")
+            else:
+                markdown_parts.append(f"**{block.type}**: {block.text}")
+        return "\n\n".join(markdown_parts)

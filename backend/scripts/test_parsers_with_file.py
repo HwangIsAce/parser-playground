@@ -32,28 +32,29 @@ def save_result(parser_name: str, mode: str, result, output_dir: Path):
         markdown_file.write_text(result.blocks[0].text, encoding='utf-8')
         print(f"  ✓ Saved markdown: {markdown_file}")
     
-    # Save JSON result
+    # Save JSON result (using to_dict() to include all new schema fields)
     json_file = output_dir / f"{parser_name}_{mode}_result.json"
-    result_dict = {
-        "document_id": result.document_id,
-        "parser": result.metadata.get("parser"),
-        "file_type": result.metadata.get("file_type"),
-        "format": result.metadata.get("format"),
+    result_dict = result.to_dict()  # Use to_dict() to get all fields including new schema
+    result_dict["timestamp"] = datetime.now().isoformat()
+    
+    # Add summary info
+    result_dict["summary"] = {
         "blocks_count": len(result.blocks),
-        "blocks": [
-            {
-                "type": block.type,
-                "text_preview": block.text[:200] if block.text else "",
-                "text_length": len(block.text) if block.text else 0,
-                "metadata": block.metadata,
-            }
-            for block in result.blocks
-        ],
-        "metadata": result.metadata,
-        "timestamp": datetime.now().isoformat(),
+        "has_coordinates": any(b.coordinates is not None for b in result.blocks),
+        "has_content": any(b.content is not None for b in result.blocks),
+        "has_full_content": result.full_content is not None,
+        "has_usage": result.usage is not None,
     }
+    
     json_file.write_text(json.dumps(result_dict, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f"  ✓ Saved JSON: {json_file}")
+    
+    # Print schema validation
+    print(f"\n  Schema Validation:")
+    print(f"    - Blocks with coordinates: {sum(1 for b in result.blocks if b.coordinates)}")
+    print(f"    - Blocks with content: {sum(1 for b in result.blocks if b.content)}")
+    print(f"    - Full content available: {result.full_content is not None}")
+    print(f"    - Usage info available: {result.usage is not None}")
 
 
 def test_parser_with_file(input_file: Path, parser_name: str, mode: str, output_dir: Path):

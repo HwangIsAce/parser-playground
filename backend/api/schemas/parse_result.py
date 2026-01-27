@@ -10,8 +10,14 @@ class BlockResponse(BaseModel):
     
     type: str
     text: str
-    bbox: Optional[Dict[str, float]] = None
+    coordinates: Optional[List[Dict[str, float]]] = None
+    bbox: Optional[Dict[str, float]] = None  # Calculated from coordinates (backward compatibility)
     metadata: Dict[str, Any] = {}
+    
+    # Upstage style additional fields
+    page: Optional[int] = None
+    element_id: Optional[int] = None
+    content: Optional[Dict[str, str]] = None
 
 
 class ParseRequest(BaseModel):
@@ -33,6 +39,10 @@ class ParseResponse(BaseModel):
     blocks: List[BlockResponse]
     metadata: Dict[str, Any]
     
+    # Upstage style additional fields
+    content: Optional[Dict[str, str]] = None
+    usage: Optional[Dict[str, Any]] = None
+    
     class Config:
         from_attributes = True
     
@@ -52,10 +62,16 @@ class ParseResponse(BaseModel):
                 BlockResponse(
                     type=block.type,
                     text=block.text,
-                    bbox=block.bbox,
+                    coordinates=block.coordinates,
+                    bbox=block.bbox,  # Calculated from coordinates
                     metadata=block.metadata,
+                    page=block.page,
+                    element_id=block.element_id,
+                    content=block.content,
                 )
                 for block in parse_result.blocks
             ],
             metadata=parse_result.metadata,
+            content=parse_result.full_content,
+            usage=parse_result.usage,
         )

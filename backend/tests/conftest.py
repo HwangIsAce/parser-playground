@@ -47,20 +47,32 @@ def sample_image_document():
 @pytest.fixture
 def sample_parse_result():
     """Create a sample parse result for testing."""
+    coordinates = [
+        {"x": 0.0, "y": 0.0},
+        {"x": 1.0, "y": 0.0},
+        {"x": 1.0, "y": 0.5},
+        {"x": 0.0, "y": 0.5}
+    ]
     blocks = [
         Block(
             type="text",
             text="Sample text content",
+            page=1,
+            element_id=0,
             metadata={"parser": "unstructured"},
         ),
         Block(
             type="table",
             text="Table content",
-            bbox={"x": 0, "y": 0, "width": 100, "height": 50},
+            coordinates=coordinates,
+            page=1,
+            element_id=1,
         ),
     ]
     return ParseResult(
         document_id="test-doc-123",
         blocks=blocks,
+        full_content={"html": "<div>...</div>", "markdown": "...", "text": "..."},
+        usage={"pages": 1},
         metadata={"parser": "unstructured", "file_type": "pdf"},
     )

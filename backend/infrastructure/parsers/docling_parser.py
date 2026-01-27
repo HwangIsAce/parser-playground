@@ -105,6 +105,14 @@ class DoclingParser(BaseParser):
         # Convert DoclingDocument to ParseResult
         blocks = []
         doc = result.document
+        element_id = 0
+        
+        # Generate full content (Upstage style)
+        full_content = {
+            "html": doc.export_to_html(),
+            "markdown": doc.export_to_markdown(),
+            "text": doc.export_to_text()
+        }
         
         # Try to extract structured content from pages
         # DoclingDocument.pages is a dict with page numbers as keys
@@ -114,60 +122,110 @@ class DoclingParser(BaseParser):
                 for item in page.items:
                     item_type = type(item).__name__
                     
+                    # Generate coordinates from bbox if available
+                    coordinates = None
+                    if hasattr(item, 'bbox') and item.bbox:
+                        # Normalize coordinates (assuming page size)
+                        page_size = page.size if hasattr(page, 'size') else None
+                        if page_size:
+                            l = item.bbox.l / page_size.width
+                            t = item.bbox.t / page_size.height
+                            r = item.bbox.r / page_size.width
+                            b = item.bbox.b / page_size.height
+                        else:
+                            l, t, r, b = item.bbox.l, item.bbox.t, item.bbox.r, item.bbox.b
+                        
+                        coordinates = [
+                            {"x": l, "y": t},  # 좌상단
+                            {"x": r, "y": t},  # 우상단
+                            {"x": r, "y": b},  # 우하단
+                            {"x": l, "y": b}   # 좌하단
+                        ]
+                    
                     # Check if it's a table item
                     if hasattr(item, 'label') and 'table' in str(item.label).lower():
-                        # Extract table as markdown
+                        # Extract table content
                         try:
                             table_md = item.export_to_markdown() if hasattr(item, 'export_to_markdown') else str(item)
+                            table_html = item.export_to_html() if hasattr(item, 'export_to_html') else None
+                            
+                            content = {
+                                "markdown": table_md,
+                                "text": table_md
+                            }
+                            if table_html:
+                                content["html"] = table_html
+                            
                             blocks.append(
                                 Block(
                                     type="table",
                                     text=table_md,
+                                    coordinates=coordinates,
+                                    page=page_no,
+                                    element_id=element_id,
+                                    content=content,
                                     metadata={
                                         "parser": "docling",
                                         "file_type": document.file_type,
                                         "item_type": item_type,
-                                        "page": page_no,
                                     },
                                 )
                             )
+                            element_id += 1
                         except Exception:
                             # Fallback to string representation
                             blocks.append(
                                 Block(
                                     type="table",
                                     text=str(item),
+                                    coordinates=coordinates,
+                                    page=page_no,
+                                    element_id=element_id,
                                     metadata={
                                         "parser": "docling",
                                         "file_type": document.file_type,
                                         "item_type": item_type,
-                                        "page": page_no,
                                     },
                                 )
                             )
+                            element_id += 1
                     else:
                         # Extract text content
                         try:
                             if hasattr(item, 'export_to_markdown'):
                                 text_content = item.export_to_markdown()
+                                text_html = item.export_to_html() if hasattr(item, 'export_to_html') else None
                             elif hasattr(item, 'text'):
                                 text_content = item.text
+                                text_html = None
                             else:
                                 text_content = str(item)
+                                text_html = None
                             
                             if text_content and text_content.strip():
+                                content = {
+                                    "markdown": text_content,
+                                    "text": text_content
+                                }
+                                if text_html:
+                                    content["html"] = text_html
+                                
                                 blocks.append(
                                     Block(
                                         type="text",
                                         text=text_content,
+                                        coordinates=coordinates,
+                                        page=page_no,
+                                        element_id=element_id,
+                                        content=content if content.get("html") else None,
                                         metadata={
                                             "parser": "docling",
                                             "file_type": document.file_type,
                                             "item_type": item_type,
-                                            "page": page_no,
                                         },
                                     )
                                 )
+                                element_id += 1
                         except Exception:
                             # Fallback: skip this item
                             pass
@@ -184,10 +242,21 @@ class DoclingParser(BaseParser):
             if html_tables:
                 # Add tables as separate blocks
                 for i, table_html in enumerate(html_tables):
+                    # Extract text from HTML table
+                    table_text = re.sub(r'<[^>]+>', '', table_html).strip()
+                    table_md = table_text  # Simple conversion
+                    
                     blocks.append(
                         Block(
                             type="table",
-                            text=table_html,
+                            text=table_md,
+                            page=1,
+                            element_id=element_id,
+                            content={
+                                "html": table_html,
+                                "markdown": table_md,
+                                "text": table_text
+                            },
                             metadata={
                                 "parser": "docling",
                                 "file_type": document.file_type,
@@ -196,16 +265,24 @@ class DoclingParser(BaseParser):
                             },
                         )
                     )
+                    element_id += 1
                 
                 # Add remaining HTML content as text (remove tables)
                 text_html = html_content
                 for table in html_tables:
                     text_html = text_html.replace(table, "")
                 if text_html.strip():
+                    text_content = re.sub(r'<[^>]+>', '', text_html).strip()
                     blocks.append(
                         Block(
                             type="text",
-                            text=text_html,
+                            text=text_content,
+                            page=1,
+                            element_id=element_id,
+                            content={
+                                "html": text_html,
+                                "text": text_content
+                            },
                             metadata={
                                 "parser": "docling",
                                 "file_type": document.file_type,
@@ -213,6 +290,7 @@ class DoclingParser(BaseParser):
                             },
                         )
                     )
+                    element_id += 1
             else:
                 # Fallback to markdown export
                 markdown_content = doc.export_to_markdown()
@@ -220,16 +298,21 @@ class DoclingParser(BaseParser):
                     Block(
                         type="text",
                         text=markdown_content,
+                        page=1,
+                        element_id=element_id,
                         metadata={
                             "parser": "docling",
                             "file_type": document.file_type,
                         },
                     )
                 )
+                element_id += 1
         
         return ParseResult(
             document_id=document.id,
             blocks=blocks,
+            full_content=full_content,
+            usage={"pages": doc.num_pages()},
             metadata={
                 "parser": self.get_name(),
                 "file_type": document.file_type,

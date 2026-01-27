@@ -133,22 +133,96 @@ class ChandraParser(BaseParser):
         # Parse markdown
         markdown = ChandraParser._parse_markdown(result.raw)
         
+        # Generate full content (Upstage style)
+        import re
+        full_content = {
+            "html": markdown,  # Chandra markdown contains HTML
+            "markdown": markdown,
+            "text": re.sub(r'<[^>]+>', '', markdown)  # Remove HTML tags for text
+        }
+        
         # Convert to blocks
-        blocks = [
-            Block(
-                type="text",
-                text=markdown,
-                metadata={
-                    "parser": "chandra",
-                    "file_type": document.file_type,
-                    "format": "markdown",
-                },
+        blocks = []
+        element_id = 0
+        
+        # Extract HTML tables if present
+        html_tables = re.findall(r'<table.*?</table>', markdown, re.DOTALL | re.IGNORECASE)
+        
+        if html_tables:
+            # Add tables as separate blocks
+            for table_html in html_tables:
+                # Extract text from HTML table
+                table_text = re.sub(r'<[^>]+>', '', table_html).strip()
+                # Simple markdown conversion
+                table_md = table_text.replace('\n', ' | ').strip()
+                
+                blocks.append(
+                    Block(
+                        type="table",
+                        text=table_md,
+                        page=1,
+                        element_id=element_id,
+                        content={
+                            "html": table_html,
+                            "markdown": table_md,
+                            "text": table_text
+                        },
+                        metadata={
+                            "parser": "chandra",
+                            "file_type": document.file_type,
+                            "format": "markdown",
+                        },
+                    )
+                )
+                element_id += 1
+            
+            # Add remaining text (remove tables)
+            text_content = markdown
+            for table in html_tables:
+                text_content = text_content.replace(table, "")
+            text_content = re.sub(r'<[^>]+>', '', text_content).strip()
+            
+            if text_content:
+                blocks.append(
+                    Block(
+                        type="text",
+                        text=text_content,
+                        page=1,
+                        element_id=element_id,
+                        metadata={
+                            "parser": "chandra",
+                            "file_type": document.file_type,
+                        },
+                    )
+                )
+                element_id += 1
+        else:
+            # No tables, add as single text block
+            blocks.append(
+                Block(
+                    type="text",
+                    text=markdown,
+                    page=1,
+                    element_id=element_id,
+                    content={
+                        "html": markdown,
+                        "markdown": markdown,
+                        "text": re.sub(r'<[^>]+>', '', markdown)
+                    },
+                    metadata={
+                        "parser": "chandra",
+                        "file_type": document.file_type,
+                        "format": "markdown",
+                    },
+                )
             )
-        ]
+            element_id += 1
         
         return ParseResult(
             document_id=document.id,
             blocks=blocks,
+            full_content=full_content,
+            usage={"pages": 1},
             metadata={
                 "parser": self.get_name(),
                 "file_type": document.file_type,

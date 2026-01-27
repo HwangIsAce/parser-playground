@@ -86,16 +86,24 @@ class FileStorage(StorageInterface):
         if document.is_image():
             return self.load(document.file_path)
         
-        # For PDF, convert to image (TODO: implement with pdf2image)
+        # For PDF, convert to image
         if document.is_pdf():
-            # TODO: Implement PDF to image conversion
-            # from pdf2image import convert_from_path
-            # import io
-            # images = convert_from_path(document.file_path)
-            # if page_number < len(images):
-            #     img_byte_arr = io.BytesIO()
-            #     images[page_number].save(img_byte_arr, format='PNG')
-            #     return img_byte_arr.getvalue()
-            return None
+            try:
+                from pdf2image import convert_from_path
+                import io
+                
+                # Convert PDF page to image
+                images = convert_from_path(document.file_path)
+                if page_number < len(images):
+                    img_byte_arr = io.BytesIO()
+                    images[page_number].save(img_byte_arr, format='PNG')
+                    return img_byte_arr.getvalue()
+                return None
+            except ImportError:
+                # pdf2image not installed
+                return None
+            except Exception:
+                # PDF conversion failed
+                return None
         
         return None

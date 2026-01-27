@@ -85,11 +85,12 @@ class ChandraParser(BaseParser):
                 f"Error: {str(e)}"
             )
     
-    def _load_image(self, file_path: str):
+    def _load_image(self, file_path: str, page_number: int = 0):
         """Load image from file path.
         
         Args:
-            file_path: Path to image file
+            file_path: Path to image file or PDF
+            page_number: Page number for PDF (0-indexed)
             
         Returns:
             PIL Image object
@@ -97,9 +98,23 @@ class ChandraParser(BaseParser):
         from PIL import Image
         
         if file_path.endswith('.pdf'):
-            # TODO: Convert PDF page to image
-            # For now, raise error
-            raise ValueError("PDF to image conversion not implemented yet. Please use image files.")
+            # Convert PDF page to image
+            try:
+                from pdf2image import convert_from_path
+                
+                images = convert_from_path(file_path)
+                if page_number < len(images):
+                    return images[page_number]
+                else:
+                    raise ValueError(
+                        f"Page {page_number} not found. PDF has {len(images)} page(s)"
+                    )
+            except ImportError:
+                raise ImportError(
+                    "pdf2image is not installed. Install it with: pip install pdf2image"
+                )
+            except Exception as e:
+                raise ValueError(f"Failed to convert PDF to image: {str(e)}")
         
         return Image.open(file_path)
     
@@ -107,15 +122,15 @@ class ChandraParser(BaseParser):
         """Parse document using Chandra OCR model.
         
         Args:
-            document: Document to parse
+            document: Document to parse (page-level, page 0)
             
         Returns:
             ParseResult containing parsed data
         """
         from chandra.model.schema import BatchInputItem
         
-        # Load image
-        image = self._load_image(document.file_path)
+        # Load image (page-level: always page 0)
+        image = self._load_image(document.file_path, page_number=0)
         
         # Prepare batch
         batch = [BatchInputItem(image=image, prompt_type="ocr_layout")]

@@ -62,10 +62,33 @@ class TestDocumentService:
             document = await service.create_from_upload(upload_file)
             assert document.file_type == file_type
     
-    def test_get_by_id_returns_none(self):
-        """Test get_by_id returns None (not implemented)."""
+    def test_get_by_id_returns_document(self, temp_dir):
+        """Test get_by_id returns document from cache."""
         service = DocumentService()
-        result = service.get_by_id("test-id")
+        service.storage.base_dir = temp_dir
+        
+        # Create and upload a document
+        from unittest.mock import Mock, AsyncMock
+        from fastapi import UploadFile
+        
+        upload_file = Mock(spec=UploadFile)
+        upload_file.filename = "test.pdf"
+        upload_file.content_type = "application/pdf"
+        upload_file.read = AsyncMock(return_value=b"test content")
+        
+        import asyncio
+        document = asyncio.run(service.create_from_upload(upload_file))
+        
+        # Retrieve document
+        result = service.get_by_id(document.id)
+        assert result is not None
+        assert result.id == document.id
+        assert result.filename == "test.pdf"
+    
+    def test_get_by_id_returns_none_when_not_found(self):
+        """Test get_by_id returns None when document not found."""
+        service = DocumentService()
+        result = service.get_by_id("nonexistent-id")
         assert result is None
     
     def test_get_page_image(self, sample_document, temp_dir):

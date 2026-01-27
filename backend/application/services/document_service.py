@@ -1,7 +1,7 @@
 """Document service for document management."""
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict
 
 from fastapi import UploadFile
 
@@ -26,8 +26,10 @@ class DocumentService:
         Note:
             - Uses dependency injection for testability
             - Defaults to FileStorage if not provided
+            - Uses in-memory cache for document storage (can be extended to DB)
         """
         self.storage = storage or FileStorage()
+        self._documents: Dict[str, Document] = {}  # In-memory cache
     
     async def create_from_upload(self, upload_file: UploadFile) -> Document:
         """Create a single-page document from uploaded file.
@@ -67,6 +69,9 @@ class DocumentService:
             },
         )
         
+        # Store in cache
+        self._documents[document.id] = document
+        
         return document
     
     def get_by_id(self, document_id: str) -> Optional[Document]:
@@ -79,12 +84,10 @@ class DocumentService:
             Document entity or None if not found
             
         Note:
-            - Currently not implemented (returns None)
-            - Future: Can be extended to query from database or cache
+            - Uses in-memory cache for document retrieval
+            - Future: Can be extended to query from database
         """
-        # TODO: Implement document retrieval from database/cache
-        # For now, return None (placeholder)
-        return None
+        return self._documents.get(document_id)
     
     def get_page_image(self, document: Document, page_number: int) -> Optional[bytes]:
         """Get page image for document viewer.

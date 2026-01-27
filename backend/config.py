@@ -22,6 +22,21 @@ class Settings(BaseSettings):
     PARSER_CONFIGS: Dict[str, Dict[str, Any]] = {
         "docling": {
             # Docling configuration
+            "enable_remote_services": False,  # Set to True if using remote vision models
+            # OCR options (important for image files)
+            "do_ocr": True,  # Force OCR for image files
+            "generate_picture_images": True,
+            "images_scale": 2,
+            # Table extraction
+            "do_table_structure": True,  # Enable table structure recognition
+            "table_structure_options": {
+                "do_cell_matching": True,  # Map structure back to PDF cells (default)
+            },
+            # Enrichments
+            "do_picture_description": True,  # Use vision model for image description
+            "do_picture_classification": False,
+            "do_code_enrichment": False,
+            "do_formula_enrichment": False,
         },
         "chandra": {
             # Chandra configuration

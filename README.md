@@ -24,6 +24,11 @@ playground/
 
 - Python 3.12+
 - uv (recommended) or pip
+- GPU (for enhance mode with Chandra parser)
+- poppler-utils (for PDF to image conversion)
+  - Ubuntu/Debian: `sudo apt-get install poppler-utils`
+  - macOS: `brew install poppler`
+  - Conda: `conda install -c conda-forge poppler`
 
 ### Backend Setup
 
@@ -38,6 +43,18 @@ uvicorn main:app --reload
 ```
 
 Backend will be available at `http://localhost:8000`
+
+#### Parser Modes
+
+- **basic**: Uses Docling parser (CPU/MPU compatible)
+- **enhance**: Uses Chandra OCR parser (requires GPU)
+
+#### GPU Requirements
+
+For enhance mode (Chandra parser):
+- CUDA-capable GPU
+- ~20GB+ GPU memory recommended
+- First run will download ~9GB model
 
 ### Frontend Setup
 
@@ -80,8 +97,9 @@ API_BASE_URL=http://localhost:8000
 
 ### Parse
 
-- `POST /api/v1/documents/{document_id}/parse` - Parse document
-- `GET /api/v1/parsers` - List available parsers
+- `POST /api/v1/documents/{document_id}/pages/{page_number}/parse` - Parse document page
+  - Request body: `{"mode": "basic"}` or `{"mode": "enhance"}`
+- `GET /api/v1/parsers` - List available parsers and modes
 
 ## Adding New Parsers
 

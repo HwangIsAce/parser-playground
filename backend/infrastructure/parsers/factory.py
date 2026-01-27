@@ -23,7 +23,15 @@ class ParserFactory:
         Raises:
             ValueError: If parser name is not registered
         """
-        raise NotImplementedError
+        if parser_name not in cls._parsers:
+            available = ", ".join(cls._parsers.keys()) if cls._parsers else "none"
+            raise ValueError(
+                f"Unknown parser: {parser_name}. "
+                f"Available parsers: {available}"
+            )
+        
+        parser_class = cls._parsers[parser_name]
+        return parser_class(config=config)
     
     @classmethod
     def register(cls, name: str, parser_class: Type[ParserInterface]):
@@ -33,7 +41,7 @@ class ParserFactory:
             name: Parser identifier name
             parser_class: Parser class implementing ParserInterface
         """
-        pass
+        cls._parsers[name] = parser_class
     
     @classmethod
     def list_available(cls) -> List[str]:
@@ -42,7 +50,7 @@ class ParserFactory:
         Returns:
             List of registered parser names
         """
-        raise NotImplementedError
+        return list(cls._parsers.keys())
     
     @classmethod
     def is_registered(cls, name: str) -> bool:
@@ -54,4 +62,4 @@ class ParserFactory:
         Returns:
             True if parser is registered
         """
-        raise NotImplementedError
+        return name in cls._parsers

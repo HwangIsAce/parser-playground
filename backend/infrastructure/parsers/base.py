@@ -16,7 +16,7 @@ class BaseParser(ParserInterface):
         Args:
             config: Parser-specific configuration dictionary
         """
-        pass
+        self.config = config or {}
     
     def validate_document(self, document: Document) -> bool:
         """Validate if document format is supported.
@@ -27,7 +27,8 @@ class BaseParser(ParserInterface):
         Returns:
             True if document format is supported
         """
-        raise NotImplementedError
+        supported_formats = [fmt.lower() for fmt in self.get_supported_formats()]
+        return document.file_type.lower() in supported_formats
     
     def preprocess(self, document: Document) -> Document:
         """Preprocess document before parsing (can be overridden).
@@ -38,7 +39,7 @@ class BaseParser(ParserInterface):
         Returns:
             Preprocessed document
         """
-        raise NotImplementedError
+        return document
     
     def parse(self, document: Document) -> ParseResult:
         """Template method for parsing.
@@ -52,7 +53,14 @@ class BaseParser(ParserInterface):
         Raises:
             ValueError: If document format is not supported
         """
-        raise NotImplementedError
+        if not self.validate_document(document):
+            raise ValueError(
+                f"Unsupported format: {document.file_type}. "
+                f"Supported formats: {self.get_supported_formats()}"
+            )
+        
+        processed_doc = self.preprocess(document)
+        return self._do_parse(processed_doc)
     
     @abstractmethod
     def _do_parse(self, document: Document) -> ParseResult:

@@ -1,8 +1,11 @@
 """File system storage implementation."""
+import uuid
+from pathlib import Path
 from typing import Optional
 
 from core.interfaces.storage_interface import StorageInterface
 from core.models.document import Document
+from config import settings
 
 
 class FileStorage(StorageInterface):
@@ -14,7 +17,8 @@ class FileStorage(StorageInterface):
         Args:
             base_dir: Base directory for file storage
         """
-        pass
+        self.base_dir = Path(base_dir or settings.UPLOAD_DIR)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
     
     def save(self, file_content: bytes, filename: str) -> str:
         """Save file and return file path.
@@ -26,7 +30,16 @@ class FileStorage(StorageInterface):
         Returns:
             Path where file is saved
         """
-        raise NotImplementedError
+        # Generate unique filename
+        file_ext = Path(filename).suffix
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = self.base_dir / unique_filename
+        
+        # Save file
+        with open(file_path, 'wb') as f:
+            f.write(file_content)
+        
+        return str(file_path)
     
     def load(self, file_path: str) -> bytes:
         """Load file content.
@@ -37,7 +50,12 @@ class FileStorage(StorageInterface):
         Returns:
             File content as bytes
         """
-        raise NotImplementedError
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        
+        with open(path, 'rb') as f:
+            return f.read()
     
     def delete(self, file_path: str) -> bool:
         """Delete file.
@@ -48,7 +66,11 @@ class FileStorage(StorageInterface):
         Returns:
             True if deleted successfully
         """
-        raise NotImplementedError
+        path = Path(file_path)
+        if path.exists():
+            path.unlink()
+            return True
+        return False
     
     def get_page_image(self, document: Document, page_number: int) -> Optional[bytes]:
         """Get page image for document viewer.
@@ -60,4 +82,20 @@ class FileStorage(StorageInterface):
         Returns:
             Image bytes or None if not available
         """
-        raise NotImplementedError
+        # For image files, return the file itself
+        if document.is_image():
+            return self.load(document.file_path)
+        
+        # For PDF, convert to image (TODO: implement with pdf2image)
+        if document.is_pdf():
+            # TODO: Implement PDF to image conversion
+            # from pdf2image import convert_from_path
+            # import io
+            # images = convert_from_path(document.file_path)
+            # if page_number < len(images):
+            #     img_byte_arr = io.BytesIO()
+            #     images[page_number].save(img_byte_arr, format='PNG')
+            #     return img_byte_arr.getvalue()
+            return None
+        
+        return None

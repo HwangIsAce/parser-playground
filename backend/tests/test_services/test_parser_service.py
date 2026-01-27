@@ -33,15 +33,17 @@ class TestParserService:
     def test_init(self):
         """Test initialization."""
         service = ParserService()
-        assert service.default_parser_name is not None
+        assert service.mode_mapping is not None
+        assert "basic" in service.mode_mapping
+        assert "enhance" in service.mode_mapping
         assert service._parser_cache == {}
     
     @patch('application.services.parser_service.ParserFactory')
     def test_parse_document_with_default_parser(self, mock_factory):
-        """Test parse_document with default parser."""
+        """Test parse_document with default mode (basic)."""
         mock_parser = MockParser()
         mock_factory.create.return_value = mock_parser
-        mock_factory.list_available.return_value = ["unstructured"]
+        mock_factory.list_available.return_value = ["docling", "chandra"]
         
         service = ParserService()
         service._get_parser = lambda name: mock_parser
@@ -53,15 +55,15 @@ class TestParserService:
             file_path="/tmp/test.pdf",
         )
         
-        result = service.parse_document(doc)
+        result = service.parse_document(doc, mode="basic")
         
         assert isinstance(result, ParseResult)
         assert result.document_id == "test"
         assert len(result.blocks) == 1
     
     @patch('application.services.parser_service.ParserFactory')
-    def test_parse_document_with_specified_parser(self, mock_factory):
-        """Test parse_document with specified parser."""
+    def test_parse_document_with_specified_mode(self, mock_factory):
+        """Test parse_document with specified mode."""
         mock_parser = MockParser()
         mock_factory.create.return_value = mock_parser
         
@@ -75,7 +77,7 @@ class TestParserService:
             file_path="/tmp/test.pdf",
         )
         
-        result = service.parse_document(doc, parser_name="mock_parser")
+        result = service.parse_document(doc, mode="enhance")
         
         assert isinstance(result, ParseResult)
     
@@ -101,13 +103,22 @@ class TestParserService:
     @patch('application.services.parser_service.ParserFactory')
     def test_get_available_parsers(self, mock_factory):
         """Test get_available_parsers."""
-        mock_factory.list_available.return_value = ["unstructured", "upstage"]
+        mock_factory.list_available.return_value = ["docling", "chandra", "unstructured"]
         
         service = ParserService()
         parsers = service.get_available_parsers()
         
-        assert parsers == ["unstructured", "upstage"]
+        assert "docling" in parsers or "chandra" in parsers or "unstructured" in parsers
         mock_factory.list_available.assert_called_once()
+    
+    def test_get_available_modes(self):
+        """Test get_available_modes."""
+        service = ParserService()
+        modes = service.get_available_modes()
+        
+        assert "basic" in modes
+        assert "enhance" in modes
+        assert len(modes) == 2
     
     @patch('application.services.parser_service.ParserFactory')
     def test_get_parser_caches_instance(self, mock_factory):

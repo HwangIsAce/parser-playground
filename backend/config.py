@@ -16,9 +16,19 @@ class Settings(BaseSettings):
     
     # Parser Settings
     DEFAULT_PARSER: str = "unstructured"
+    DEFAULT_PARSE_MODE: str = "basic"  # Default parse mode: 'basic' or 'enhance'
     
     # Parser Configurations
-    PARSER_CONFIGS: Dict[str, Dict[str, Any]] = {}
+    PARSER_CONFIGS: Dict[str, Dict[str, Any]] = {
+        "docling": {
+            # Docling configuration
+        },
+        "chandra": {
+            # Chandra configuration
+            "model_path": "datalab-to/chandra",
+            "use_gpu": True,
+        },
+    }
     
     # Storage Settings
     UPLOAD_DIR: str = "./uploads"

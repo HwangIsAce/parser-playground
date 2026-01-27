@@ -12,43 +12,51 @@ class ParserService:
     """Service for document parsing operations.
     
     Note: Orchestrates parsing operations using registered parsers.
-    Supports page-level parsing (single page per document).
+    Supports page-level parsing with mode selection (basic/enhance).
     """
     
     def __init__(self):
         """Initialize parser service.
         
         Note:
-            - Loads default parser name from settings
-            - Initializes parser instance cache
-            - Parser registration happens when importing infrastructure.parsers
+            - Maps mode to parser names
+            - basic -> docling
+            - enhance -> chandra
         """
-        self.default_parser_name = settings.DEFAULT_PARSER
+        self.mode_mapping = {
+            "basic": "docling",
+            "enhance": "chandra",
+        }
+        self.default_mode = getattr(settings, 'DEFAULT_PARSE_MODE', 'basic')
         self._parser_cache: Dict[str, ParserInterface] = {}
     
     def parse_document(
         self,
         document: Document,
-        parser_name: Optional[str] = None
+        mode: str = "basic"
     ) -> ParseResult:
-        """Parse a document (page) using specified or default parser.
+        """Parse a document (page) using specified mode.
         
         Args:
             document: Document entity (single page) to parse
-            parser_name: Name of parser to use (defaults to configured default)
+            mode: Parse mode ('basic' for Docling, 'enhance' for Chandra)
             
         Returns:
             ParseResult containing parsed data
             
         Raises:
-            ValueError: If parser is not found or document format is unsupported
+            ValueError: If mode is invalid or parser is not found
             
         Note:
             - Currently processes single page only
             - Future: Can be extended for multi-page document parsing
         """
-        # Determine parser name (use specified or default)
-        parser_name = parser_name or self.default_parser_name
+        # Map mode to parser name
+        parser_name = self.mode_mapping.get(mode)
+        if not parser_name:
+            raise ValueError(
+                f"Unknown mode: {mode}. Use 'basic' or 'enhance'"
+            )
         
         # Get parser instance (with caching)
         parser = self._get_parser(parser_name)
@@ -66,11 +74,16 @@ class ParserService:
         
         Returns:
             List of registered parser names
-            
-        Examples:
-            ["unstructured", "upstage"]  # Registered parsers
         """
         return ParserFactory.list_available()
+    
+    def get_available_modes(self) -> list[str]:
+        """Get list of available parse modes.
+        
+        Returns:
+            List of available modes ['basic', 'enhance']
+        """
+        return list(self.mode_mapping.keys())
     
     def _get_parser(self, parser_name: str) -> ParserInterface:
         """Get parser instance (with caching).

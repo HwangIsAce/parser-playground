@@ -27,13 +27,13 @@ class TestParseEndpoints:
         mock_result = ParseResult(
             document_id="test-123",
             blocks=[Block(type="text", text="Parsed content")],
-            metadata={"parser": "unstructured"},
+            metadata={"parser": "docling"},
         )
         mock_parser_service.parse_document.return_value = mock_result
         
         response = client.post(
             "/api/v1/documents/test-123/pages/0/parse",
-            json={}
+            json={"mode": "basic"}
         )
         
         assert response.status_code == 200
@@ -44,8 +44,8 @@ class TestParseEndpoints:
     
     @patch('api.routes.parse.document_service')
     @patch('api.routes.parse.parser_service')
-    def test_parse_document_with_parser_name(self, mock_parser_service, mock_doc_service, client):
-        """Test parse document with specified parser."""
+    def test_parse_document_with_mode(self, mock_parser_service, mock_doc_service, client):
+        """Test parse document with specified mode."""
         mock_doc = Document(
             id="test-123",
             filename="test.pdf",
@@ -63,13 +63,13 @@ class TestParseEndpoints:
         
         response = client.post(
             "/api/v1/documents/test-123/pages/0/parse",
-            json={"parser_name": "unstructured"}
+            json={"mode": "enhance"}
         )
         
         assert response.status_code == 200
         mock_parser_service.parse_document.assert_called_once_with(
             mock_doc,
-            parser_name="unstructured"
+            mode="enhance"
         )
     
     @patch('api.routes.parse.document_service')
@@ -113,15 +113,18 @@ class TestParseEndpoints:
     @patch('api.routes.parse.parser_service')
     def test_list_parsers(self, mock_parser_service, client):
         """Test list parsers."""
-        mock_parser_service.get_available_parsers.return_value = ["unstructured", "upstage"]
+        mock_parser_service.get_available_parsers.return_value = ["docling", "chandra", "unstructured"]
+        mock_parser_service.get_available_modes.return_value = ["basic", "enhance"]
         
         response = client.get("/api/v1/parsers")
         
         assert response.status_code == 200
         data = response.json()
         assert "parsers" in data
-        assert "unstructured" in data["parsers"]
-        assert "upstage" in data["parsers"]
+        assert "modes" in data
+        assert "mode_mapping" in data
+        assert "basic" in data["modes"]
+        assert "enhance" in data["modes"]
     
     @patch('api.routes.parse.document_service')
     def test_get_parse_result_not_implemented(self, mock_doc_service, client):

@@ -1,6 +1,6 @@
 """Parse result API schemas."""
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.models.parse_result import ParseResult
 
@@ -17,7 +17,10 @@ class BlockResponse(BaseModel):
 class ParseRequest(BaseModel):
     """Parse request schema."""
     
-    parser_name: Optional[str] = None
+    mode: str = Field(
+        default="basic",
+        description="Parse mode: 'basic' (Docling) or 'enhance' (Chandra)"
+    )
     strategy: Optional[str] = None
     languages: Optional[List[str]] = None
     render_html: bool = False

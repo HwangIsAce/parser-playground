@@ -2,7 +2,7 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from core.models.document import DocumentStatus
+from core.models.document import Document, DocumentStatus
 
 
 class DocumentResponse(BaseModel):
@@ -17,6 +17,25 @@ class DocumentResponse(BaseModel):
     
     class Config:
         from_attributes = True
+    
+    @classmethod
+    def from_domain(cls, document: Document) -> "DocumentResponse":
+        """Create response from domain model.
+        
+        Args:
+            document: Document domain model
+            
+        Returns:
+            DocumentResponse instance
+        """
+        return cls(
+            id=document.id,
+            filename=document.filename,
+            file_type=document.file_type,
+            page_count=document.page_count,
+            status=document.status,
+            created_at=document.created_at,
+        )
 
 
 class DocumentCreate(BaseModel):

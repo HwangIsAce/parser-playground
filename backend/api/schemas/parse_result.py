@@ -2,6 +2,8 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
+from core.models.parse_result import ParseResult
+
 
 class BlockResponse(BaseModel):
     """Block response schema."""
@@ -30,3 +32,27 @@ class ParseResponse(BaseModel):
     
     class Config:
         from_attributes = True
+    
+    @classmethod
+    def from_domain(cls, parse_result: ParseResult) -> "ParseResponse":
+        """Create response from domain model.
+        
+        Args:
+            parse_result: ParseResult domain model
+            
+        Returns:
+            ParseResponse instance
+        """
+        return cls(
+            document_id=parse_result.document_id,
+            blocks=[
+                BlockResponse(
+                    type=block.type,
+                    text=block.text,
+                    bbox=block.bbox,
+                    metadata=block.metadata,
+                )
+                for block in parse_result.blocks
+            ],
+            metadata=parse_result.metadata,
+        )

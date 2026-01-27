@@ -61,3 +61,6 @@ htmlcov/
 
 # Streamlit
 .streamlit/
+
+# Real data
+backend/tests/data/

@@ -48,8 +48,8 @@ export default function ResultViewer({
             disabled={parsing}
             style={{ marginLeft: '0.5rem', padding: '0.25rem' }}
           >
-            <option value="basic">Basic (Docling)</option>
-            <option value="enhance">Enhance (Chandra)</option>
+            <option value="basic">Basic</option>
+            <option value="enhance">Enhance</option>
           </select>
         </label>
         <button

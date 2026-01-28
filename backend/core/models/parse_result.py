@@ -148,3 +148,34 @@ class ParseResult:
             List of table blocks
         """
         return self.get_blocks_by_type("table")
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ParseResult":
+        """Create ParseResult from dictionary.
+        
+        Args:
+            data: Dictionary with parse result data
+            
+        Returns:
+            ParseResult instance
+        """
+        blocks = []
+        for block_data in data.get("blocks", []):
+            block = Block(
+                type=block_data.get("type", ""),
+                text=block_data.get("text", ""),
+                coordinates=block_data.get("coordinates"),
+                metadata=block_data.get("metadata", {}),
+                page=block_data.get("page"),
+                element_id=block_data.get("element_id"),
+                content=block_data.get("content"),
+            )
+            blocks.append(block)
+        
+        return cls(
+            document_id=data.get("document_id", ""),
+            blocks=blocks,
+            metadata=data.get("metadata", {}),
+            full_content=data.get("content") or data.get("full_content"),
+            usage=data.get("usage"),
+        )

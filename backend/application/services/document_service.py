@@ -29,13 +29,13 @@ class DocumentService:
         Note:
             - Uses dependency injection for testability
             - Defaults to FileStorage if not provided
-            - Uses Redis for document storage (shared across processes)
+            - Uses Redis for document storage (shared between API and workers)
             - Uses Redis for parse results (key: (document_id, page_number, mode))
         """
         self.storage = storage or FileStorage()
         self._redis = redis_conn
-        self._doc_key_prefix = "document:"
-        self._parse_result_key_prefix = "parse_result:"
+        self._key_prefix = "document:"
+        self._parse_result_prefix = "parse_result:"
     
     async def create_from_upload(self, upload_file: UploadFile) -> Document:
         """Create a single-page document from uploaded file.
@@ -81,44 +81,6 @@ class DocumentService:
         
         return document
     
-    def _document_key(self, document_id: str) -> str:
-        """Get Redis key for document."""
-        return f"{self._doc_key_prefix}{document_id}"
-    
-    def _parse_result_key(self, document_id: str, page_number: int, mode: str) -> str:
-        """Get Redis key for parse result."""
-        return f"{self._parse_result_key_prefix}{document_id}:{page_number}:{mode}"
-    
-    def _serialize_document(self, document: Document) -> str:
-        """Serialize document to JSON string."""
-        data = {
-            "id": document.id,
-            "filename": document.filename,
-            "file_type": document.file_type,
-            "file_path": document.file_path,
-            "page_count": document.page_count,
-            "status": document.status.value,
-            "created_at": document.created_at.isoformat() if document.created_at else None,
-            "metadata": document.metadata or {},
-        }
-        return json.dumps(data)
-    
-    def _deserialize_document(self, data: str) -> Document:
-        """Deserialize document from JSON string."""
-        doc_data = json.loads(data)
-        
-        document = Document(
-            id=doc_data["id"],
-            filename=doc_data["filename"],
-            file_type=doc_data["file_type"],
-            file_path=doc_data["file_path"],
-            page_count=doc_data.get("page_count", 1),
-            status=DocumentStatus(doc_data["status"]),
-            created_at=datetime.fromisoformat(doc_data["created_at"]) if doc_data.get("created_at") else None,
-            metadata=doc_data.get("metadata", {}),
-        )
-        return document
-    
     def get_by_id(self, document_id: str) -> Optional[Document]:
         """Get document by ID.
         
@@ -129,17 +91,12 @@ class DocumentService:
             Document entity or None if not found
             
         Note:
-            - Uses Redis for document retrieval (shared across processes)
+            - Uses Redis for document retrieval (shared between API and workers)
         """
         key = self._document_key(document_id)
         data = self._redis.get(key)
         if not data:
             return None
-        
-        # Decode bytes to string if needed
-        if isinstance(data, bytes):
-            data = data.decode('utf-8')
-        
         return self._deserialize_document(data)
     
     def get_page_image(self, document: Document, page_number: int) -> Optional[bytes]:
@@ -164,37 +121,6 @@ class DocumentService:
         
         return self.storage.get_page_image(document, page_number)
     
-    def _serialize_parse_result(self, parse_result: ParseResult) -> str:
-        """Serialize parse result to JSON string."""
-        return json.dumps(parse_result.to_dict())
-    
-    def _deserialize_parse_result(self, data: str) -> ParseResult:
-        """Deserialize parse result from JSON string."""
-        from core.models.parse_result import Block, ParseResult
-        
-        result_data = json.loads(data)
-        
-        blocks = [
-            Block(
-                type=block_data["type"],
-                text=block_data["text"],
-                coordinates=block_data.get("coordinates"),
-                metadata=block_data.get("metadata", {}),
-                page=block_data.get("page"),
-                element_id=block_data.get("element_id"),
-                content=block_data.get("content"),
-            )
-            for block_data in result_data.get("blocks", [])
-        ]
-        
-        return ParseResult(
-            document_id=result_data["document_id"],
-            blocks=blocks,
-            metadata=result_data.get("metadata", {}),
-            full_content=result_data.get("content"),
-            usage=result_data.get("usage"),
-        )
-    
     def save_parse_result(
         self,
         document_id: str,
@@ -211,7 +137,7 @@ class DocumentService:
             parse_result: ParseResult to cache
             
         Note:
-            - Uses Redis for parse result storage (shared across processes)
+            - Uses Redis (key: parse_result:{document_id}:{page_number}:{mode})
         """
         key = self._parse_result_key(document_id, page_number, mode)
         self._redis.set(key, self._serialize_parse_result(parse_result))
@@ -236,12 +162,53 @@ class DocumentService:
         data = self._redis.get(key)
         if not data:
             return None
-        
-        # Decode bytes to string if needed
-        if isinstance(data, bytes):
-            data = data.decode('utf-8')
-        
         return self._deserialize_parse_result(data)
+    
+    def _document_key(self, document_id: str) -> str:
+        """Get Redis key for document."""
+        return f"{self._key_prefix}{document_id}"
+    
+    def _parse_result_key(self, document_id: str, page_number: int, mode: str) -> str:
+        """Get Redis key for parse result."""
+        return f"{self._parse_result_prefix}{document_id}:{page_number}:{mode}"
+    
+    def _serialize_document(self, document: Document) -> bytes:
+        """Serialize document to JSON bytes."""
+        data = {
+            "id": document.id,
+            "filename": document.filename,
+            "file_type": document.file_type,
+            "file_path": document.file_path,
+            "page_count": document.page_count,
+            "status": document.status.value,
+            "created_at": document.created_at.isoformat() if document.created_at else None,
+            "metadata": document.metadata or {},
+        }
+        return json.dumps(data).encode('utf-8')
+    
+    def _deserialize_document(self, data: bytes) -> Document:
+        """Deserialize document from JSON bytes."""
+        job_data = json.loads(data.decode('utf-8'))
+        return Document(
+            id=job_data["id"],
+            filename=job_data["filename"],
+            file_type=job_data["file_type"],
+            file_path=job_data["file_path"],
+            page_count=job_data["page_count"],
+            status=DocumentStatus(job_data["status"]),
+            created_at=datetime.fromisoformat(job_data["created_at"]) if job_data.get("created_at") else None,
+            metadata=job_data.get("metadata", {}),
+        )
+    
+    def _serialize_parse_result(self, parse_result: ParseResult) -> bytes:
+        """Serialize parse result to JSON bytes."""
+        return json.dumps(parse_result.to_dict()).encode('utf-8')
+    
+    def _deserialize_parse_result(self, data: bytes) -> ParseResult:
+        """Deserialize parse result from JSON bytes."""
+        from core.models.parse_result import ParseResult as ParseResultModel
+        result_dict = json.loads(data.decode('utf-8'))
+        return ParseResultModel.from_dict(result_dict)
     
     def _get_file_type(self, filename: str) -> str:
         """Extract file type from filename.

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { parseDocument, getPageImageUrl } from '@/lib/api'
-import { Document, ParseResult } from '@/types'
+import { startParseJob, pollJobUntilComplete, getPageImageUrl } from '@/lib/api'
+import { Document, ParseResult, Job } from '@/types'
 
 type TabType = 'blocks' | 'json' | 'html' | 'markdown'
 
@@ -22,6 +22,7 @@ export default function ResultViewer({
   const [parsing, setParsing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('blocks')
+  const [jobStatus, setJobStatus] = useState<string | null>(null)
 
   useEffect(() => {
     // Auto-parse when document and mode are available
@@ -34,12 +35,32 @@ export default function ResultViewer({
   const handleParse = async () => {
     setParsing(true)
     setError(null)
+    setJobStatus(null)
 
     try {
-      const result = await parseDocument(document.id, 0, { mode })
-      onParseComplete(result)
+      // 1. Start parse job
+      const job = await startParseJob(document.id, 0, { mode })
+      setJobStatus(job.status)
+
+      // 2. Poll job until completion
+      const completedJob = await pollJobUntilComplete(
+        job.id,
+        (currentJob) => {
+          // Update status during polling
+          setJobStatus(currentJob.status)
+        }
+      )
+
+      // 3. Handle completed job
+      if (completedJob.status === 'completed' && completedJob.result) {
+        onParseComplete(completedJob.result)
+        setJobStatus('completed')
+      } else if (completedJob.status === 'failed') {
+        throw new Error(completedJob.error || 'Parsing failed')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse document')
+      setJobStatus('failed')
     } finally {
       setParsing(false)
     }
@@ -223,7 +244,7 @@ export default function ResultViewer({
   return (
     <div className="space-y-6">
       {/* Status Bar */}
-      {(parsing || error) && (
+      {(parsing || error || jobStatus) && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           {parsing && (
             <div className="space-y-2">
@@ -233,11 +254,15 @@ export default function ResultViewer({
                   <div className="absolute inset-0 border-2 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
                 </div>
                 <span className="text-gray-700 font-medium">
-                  Parsing with {mode} mode...
+                  {jobStatus === 'queued' && 'Job queued...'}
+                  {jobStatus === 'processing' && `Parsing with ${mode} mode...`}
+                  {!jobStatus && 'Starting parse job...'}
                 </span>
               </div>
               <p className="text-sm text-gray-500 ml-9">
-                This may take up to 5 minutes. Please wait...
+                {jobStatus === 'queued' && 'Waiting for worker to start processing...'}
+                {jobStatus === 'processing' && 'This may take up to 5 minutes. Please wait...'}
+                {!jobStatus && 'Initializing...'}
               </p>
             </div>
           )}

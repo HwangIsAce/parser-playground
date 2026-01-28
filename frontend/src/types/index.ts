@@ -33,3 +33,18 @@ export interface ParseRequest {
   languages?: string[]
   render_html?: boolean
 }
+
+export type JobStatus = 'pending' | 'queued' | 'processing' | 'completed' | 'failed'
+
+export interface Job {
+  id: string
+  document_id: string
+  page_number: number
+  mode: string
+  status: JobStatus
+  created_at: string
+  started_at?: string
+  completed_at?: string
+  result?: ParseResult
+  error?: string
+}

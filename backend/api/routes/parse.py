@@ -3,11 +3,10 @@ from fastapi import APIRouter, HTTPException
 
 from api.schemas.parse_result import ParseRequest, ParseResponse
 from application.services.parser_service import ParserService
-from application.services.document_service import DocumentService
+from api.routes.documents import document_service
 
 router = APIRouter()
 parser_service = ParserService()
-document_service = DocumentService()
 
 
 @router.post("/documents/{document_id}/pages/{page_number}/parse", response_model=ParseResponse)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import ResultViewer from '@/components/ResultViewer'
 import { getDocument } from '@/lib/api'
@@ -9,7 +9,9 @@ import { Document, ParseResult } from '@/types'
 export default function DocumentViewPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const documentId = params.id as string
+  const mode = (searchParams.get('mode') as 'basic' | 'enhance') || 'basic'
 
   const [document, setDocument] = useState<Document | null>(null)
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
@@ -44,61 +46,70 @@ export default function DocumentViewPage() {
 
   if (loading) {
     return (
-      <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-        <p>Loading document...</p>
-      </main>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-8 py-12">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="relative mx-auto w-16 h-16 mb-4">
+                <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+              </div>
+              <p className="text-gray-600">Loading document...</p>
+            </div>
+          </div>
+        </div>
+      </div>
     )
   }
 
   if (error || !document) {
     return (
-      <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-        <h1>Playground</h1>
-        <div style={{ color: 'red', marginTop: '1rem' }}>
-          {error || 'Document not found'}
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-8 py-12">
+          <div className="bg-white rounded-xl shadow-sm border border-red-200 p-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
+            <div className="text-red-600 mb-6">
+              {error || 'Document not found'}
+            </div>
+            <button
+              onClick={handleNewFile}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              New File
+            </button>
+          </div>
         </div>
-        <button
-          onClick={handleNewFile}
-          style={{
-            marginTop: '1rem',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#0070f3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          New File
-        </button>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1>Playground</h1>
-        <button
-          onClick={handleNewFile}
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#0070f3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          New File
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-8 py-12">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Document Parsing
+            </h1>
+            <p className="text-gray-600">{document.filename}</p>
+          </div>
+          <button
+            onClick={handleNewFile}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            New File
+          </button>
+        </div>
 
-      <ResultViewer
-        document={document}
-        parseResult={parseResult}
-        onParseComplete={handleParseComplete}
-      />
-    </main>
+        {/* Result Viewer */}
+        <ResultViewer
+          document={document}
+          mode={mode}
+          parseResult={parseResult}
+          onParseComplete={handleParseComplete}
+        />
+      </div>
+    </div>
   )
 }

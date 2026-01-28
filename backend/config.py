@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # Storage Settings
     UPLOAD_DIR: str = "./uploads"
     
+    # Redis Settings (for RQ)
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    
     class Config:
         """Pydantic config."""
         env_file = ".env"

@@ -17,6 +17,9 @@ dependencies = [
     # Chandra dependencies
     "transformers>=4.30.0",
     "torch>=2.0.0",
+    # Queue/Worker
+    "rq>=1.15.0",
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]

@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import documents, parse
+from api.routes import documents, parse, jobs
 from config import settings
 
 
@@ -37,6 +37,11 @@ def create_app() -> FastAPI:
         parse.router,
         prefix="/api/v1",
         tags=["parse"],
+    )
+    app.include_router(
+        jobs.router,
+        prefix="/api/v1",
+        tags=["jobs"],
     )
     
     # Root endpoint

@@ -1,22 +1,40 @@
 """Parse API routes."""
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, status
 
 from api.schemas.parse_result import ParseRequest, ParseResponse
+from api.schemas.job import JobResponse
 from application.services.parser_service import ParserService
+from application.services.job_service import JobService
+from core.models.job import JobStatus
 from api.routes.documents import document_service
+from infrastructure.queue.redis_queue import default_queue
+from application.workers.parse_worker import parse_document_task
 from core.models.parse_result import ParseResult
 
 router = APIRouter()
 parser_service = ParserService()
 
+# Shared JobService instance (same as in jobs.py)
+# Note: In production, this should be a proper singleton or dependency injection
+_job_service_instance = None
 
-@router.post("/documents/{document_id}/pages/{page_number}/parse", response_model=ParseResponse)
+def get_job_service() -> JobService:
+    """Get shared JobService instance."""
+    global _job_service_instance
+    if _job_service_instance is None:
+        _job_service_instance = JobService()
+    return _job_service_instance
+
+job_service = get_job_service()
+
+
+@router.post("/documents/{document_id}/pages/{page_number}/parse", response_model=JobResponse, status_code=status.HTTP_202_ACCEPTED)
 async def parse_document(
     document_id: str,
     page_number: int,
     request: ParseRequest = ParseRequest()
 ):
-    """Parse a specific page of the document.
+    """Parse a document asynchronously.
     
     Args:
         document_id: Document ID
@@ -24,7 +42,12 @@ async def parse_document(
         request: Parse request with mode ('basic' or 'enhance')
         
     Returns:
-        ParseResponse with parsed data
+        JobResponse with job_id (202 Accepted)
+        
+    Note:
+        - Returns immediately with job_id
+        - Use GET /jobs/{job_id} to poll for status
+        - Parse result available via GET /parse/result after completion
     """
     # Get document
     document = document_service.get_by_id(document_id)
@@ -47,39 +70,30 @@ async def parse_document(
             detail=f"Invalid mode: {request.mode}. Use 'basic' or 'enhance'"
         )
     
-    # Parse document
+    # Create job
     try:
-        parse_result = parser_service.parse_document(
-            document,
-            mode=request.mode
-        )
-        # Cache parse result
-        document_service.save_parse_result(
+        job = job_service.create_job(document_id, page_number, request.mode)
+        
+        # Queue task
+        default_queue.enqueue(
+            parse_document_task,
+            job.id,
             document_id,
             page_number,
             request.mode,
-            parse_result
+            job_timeout=360  # 6 minutes
         )
-        return ParseResponse.from_domain(parse_result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except RuntimeError as e:
-        # GPU not available for Chandra
-        if "GPU" in str(e) or "CUDA" in str(e):
-            raise HTTPException(
-                status_code=503,
-                detail="Chandra parser requires GPU. GPU is not available."
-            )
-        raise HTTPException(status_code=500, detail=str(e))
-    except ImportError as e:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Parser dependencies not installed: {str(e)}"
-        )
+        
+        # Update job status to queued
+        job_service.update_job_status(job.id, JobStatus.QUEUED)
+        
+        # Return job_id immediately
+        return JobResponse.from_domain(job)
+        
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to parse document: {str(e)}"
+            detail=f"Failed to queue parsing job: {str(e)}"
         )
 
 

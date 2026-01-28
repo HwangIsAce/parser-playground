@@ -33,9 +33,7 @@ class Settings(BaseSettings):
                 "do_cell_matching": True,  # Map structure back to PDF cells (default)
             },
             # Enrichments
-            # Note: do_picture_description requires vision model (remote or local)
-            # Disable if enable_remote_services is False and no local vision model available
-            "do_picture_description": False,  # Disabled - requires vision model
+            "do_picture_description": True,  # Use vision model for image description
             "do_picture_classification": False,
             "do_code_enrichment": False,
             "do_formula_enrichment": False,

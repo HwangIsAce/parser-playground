@@ -1,5 +1,6 @@
 """Document service for document management."""
 import uuid
+import json
 from datetime import datetime
 from typing import Optional, Dict, Tuple
 
@@ -9,6 +10,7 @@ from core.models.document import Document, DocumentStatus
 from core.models.parse_result import ParseResult
 from core.interfaces.storage_interface import StorageInterface
 from infrastructure.storage.file_storage import FileStorage
+from infrastructure.queue.redis_queue import redis_conn
 
 
 class DocumentService:
@@ -27,12 +29,13 @@ class DocumentService:
         Note:
             - Uses dependency injection for testability
             - Defaults to FileStorage if not provided
-            - Uses in-memory cache for document storage (can be extended to DB)
-            - Uses in-memory cache for parse results (key: (document_id, page_number, mode))
+            - Uses Redis for document storage (shared across processes)
+            - Uses Redis for parse results (key: (document_id, page_number, mode))
         """
         self.storage = storage or FileStorage()
-        self._documents: Dict[str, Document] = {}  # In-memory cache
-        self._parse_results: Dict[Tuple[str, int, str], ParseResult] = {}  # Parse result cache
+        self._redis = redis_conn
+        self._doc_key_prefix = "document:"
+        self._parse_result_key_prefix = "parse_result:"
     
     async def create_from_upload(self, upload_file: UploadFile) -> Document:
         """Create a single-page document from uploaded file.
@@ -72,9 +75,48 @@ class DocumentService:
             },
         )
         
-        # Store in cache
-        self._documents[document.id] = document
+        # Store in Redis
+        key = self._document_key(document.id)
+        self._redis.set(key, self._serialize_document(document))
         
+        return document
+    
+    def _document_key(self, document_id: str) -> str:
+        """Get Redis key for document."""
+        return f"{self._doc_key_prefix}{document_id}"
+    
+    def _parse_result_key(self, document_id: str, page_number: int, mode: str) -> str:
+        """Get Redis key for parse result."""
+        return f"{self._parse_result_key_prefix}{document_id}:{page_number}:{mode}"
+    
+    def _serialize_document(self, document: Document) -> str:
+        """Serialize document to JSON string."""
+        data = {
+            "id": document.id,
+            "filename": document.filename,
+            "file_type": document.file_type,
+            "file_path": document.file_path,
+            "page_count": document.page_count,
+            "status": document.status.value,
+            "created_at": document.created_at.isoformat() if document.created_at else None,
+            "metadata": document.metadata or {},
+        }
+        return json.dumps(data)
+    
+    def _deserialize_document(self, data: str) -> Document:
+        """Deserialize document from JSON string."""
+        doc_data = json.loads(data)
+        
+        document = Document(
+            id=doc_data["id"],
+            filename=doc_data["filename"],
+            file_type=doc_data["file_type"],
+            file_path=doc_data["file_path"],
+            page_count=doc_data.get("page_count", 1),
+            status=DocumentStatus(doc_data["status"]),
+            created_at=datetime.fromisoformat(doc_data["created_at"]) if doc_data.get("created_at") else None,
+            metadata=doc_data.get("metadata", {}),
+        )
         return document
     
     def get_by_id(self, document_id: str) -> Optional[Document]:
@@ -87,10 +129,18 @@ class DocumentService:
             Document entity or None if not found
             
         Note:
-            - Uses in-memory cache for document retrieval
-            - Future: Can be extended to query from database
+            - Uses Redis for document retrieval (shared across processes)
         """
-        return self._documents.get(document_id)
+        key = self._document_key(document_id)
+        data = self._redis.get(key)
+        if not data:
+            return None
+        
+        # Decode bytes to string if needed
+        if isinstance(data, bytes):
+            data = data.decode('utf-8')
+        
+        return self._deserialize_document(data)
     
     def get_page_image(self, document: Document, page_number: int) -> Optional[bytes]:
         """Get page image for document viewer.
@@ -114,6 +164,37 @@ class DocumentService:
         
         return self.storage.get_page_image(document, page_number)
     
+    def _serialize_parse_result(self, parse_result: ParseResult) -> str:
+        """Serialize parse result to JSON string."""
+        return json.dumps(parse_result.to_dict())
+    
+    def _deserialize_parse_result(self, data: str) -> ParseResult:
+        """Deserialize parse result from JSON string."""
+        from core.models.parse_result import Block, ParseResult
+        
+        result_data = json.loads(data)
+        
+        blocks = [
+            Block(
+                type=block_data["type"],
+                text=block_data["text"],
+                coordinates=block_data.get("coordinates"),
+                metadata=block_data.get("metadata", {}),
+                page=block_data.get("page"),
+                element_id=block_data.get("element_id"),
+                content=block_data.get("content"),
+            )
+            for block_data in result_data.get("blocks", [])
+        ]
+        
+        return ParseResult(
+            document_id=result_data["document_id"],
+            blocks=blocks,
+            metadata=result_data.get("metadata", {}),
+            full_content=result_data.get("content"),
+            usage=result_data.get("usage"),
+        )
+    
     def save_parse_result(
         self,
         document_id: str,
@@ -121,7 +202,7 @@ class DocumentService:
         mode: str,
         parse_result: ParseResult
     ) -> None:
-        """Save parse result to cache.
+        """Save parse result to Redis.
         
         Args:
             document_id: Document ID
@@ -130,11 +211,10 @@ class DocumentService:
             parse_result: ParseResult to cache
             
         Note:
-            - Uses in-memory cache (key: (document_id, page_number, mode))
-            - Future: Can be extended to persist to database
+            - Uses Redis for parse result storage (shared across processes)
         """
-        key = (document_id, page_number, mode)
-        self._parse_results[key] = parse_result
+        key = self._parse_result_key(document_id, page_number, mode)
+        self._redis.set(key, self._serialize_parse_result(parse_result))
     
     def get_parse_result(
         self,
@@ -142,7 +222,7 @@ class DocumentService:
         page_number: int,
         mode: str
     ) -> Optional[ParseResult]:
-        """Get parse result from cache.
+        """Get parse result from Redis.
         
         Args:
             document_id: Document ID
@@ -152,8 +232,16 @@ class DocumentService:
         Returns:
             ParseResult or None if not found
         """
-        key = (document_id, page_number, mode)
-        return self._parse_results.get(key)
+        key = self._parse_result_key(document_id, page_number, mode)
+        data = self._redis.get(key)
+        if not data:
+            return None
+        
+        # Decode bytes to string if needed
+        if isinstance(data, bytes):
+            data = data.decode('utf-8')
+        
+        return self._deserialize_parse_result(data)
     
     def _get_file_type(self, filename: str) -> str:
         """Extract file type from filename.

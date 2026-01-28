@@ -53,7 +53,7 @@ export default function DocumentViewPage() {
   if (error || !document) {
     return (
       <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-        <h1>Forge Playground</h1>
+        <h1>Playground</h1>
         <div style={{ color: 'red', marginTop: '1rem' }}>
           {error || 'Document not found'}
         </div>
@@ -78,7 +78,7 @@ export default function DocumentViewPage() {
   return (
     <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1>Forge Playground</h1>
+        <h1>Playground</h1>
         <button
           onClick={handleNewFile}
           style={{

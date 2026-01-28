@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import Sidebar from '@/components/Sidebar'
 
 export const metadata: Metadata = {
-  title: 'Forge Playground',
+  title: 'Playground',
   description: 'Document parsing and extraction playground',
 }
 
@@ -13,7 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="flex">
+        <Sidebar />
+        <main className="flex-1 ml-64 min-h-screen bg-gray-50">
+          {children}
+        </main>
+      </body>
     </html>
   )
 }

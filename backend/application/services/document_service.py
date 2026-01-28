@@ -1,11 +1,12 @@
 """Document service for document management."""
 import uuid
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple
 
 from fastapi import UploadFile
 
 from core.models.document import Document, DocumentStatus
+from core.models.parse_result import ParseResult
 from core.interfaces.storage_interface import StorageInterface
 from infrastructure.storage.file_storage import FileStorage
 
@@ -27,9 +28,11 @@ class DocumentService:
             - Uses dependency injection for testability
             - Defaults to FileStorage if not provided
             - Uses in-memory cache for document storage (can be extended to DB)
+            - Uses in-memory cache for parse results (key: (document_id, page_number, mode))
         """
         self.storage = storage or FileStorage()
         self._documents: Dict[str, Document] = {}  # In-memory cache
+        self._parse_results: Dict[Tuple[str, int, str], ParseResult] = {}  # Parse result cache
     
     async def create_from_upload(self, upload_file: UploadFile) -> Document:
         """Create a single-page document from uploaded file.
@@ -110,6 +113,47 @@ class DocumentService:
             pass
         
         return self.storage.get_page_image(document, page_number)
+    
+    def save_parse_result(
+        self,
+        document_id: str,
+        page_number: int,
+        mode: str,
+        parse_result: ParseResult
+    ) -> None:
+        """Save parse result to cache.
+        
+        Args:
+            document_id: Document ID
+            page_number: Page number (0-indexed)
+            mode: Parse mode ('basic' or 'enhance')
+            parse_result: ParseResult to cache
+            
+        Note:
+            - Uses in-memory cache (key: (document_id, page_number, mode))
+            - Future: Can be extended to persist to database
+        """
+        key = (document_id, page_number, mode)
+        self._parse_results[key] = parse_result
+    
+    def get_parse_result(
+        self,
+        document_id: str,
+        page_number: int,
+        mode: str
+    ) -> Optional[ParseResult]:
+        """Get parse result from cache.
+        
+        Args:
+            document_id: Document ID
+            page_number: Page number (0-indexed)
+            mode: Parse mode ('basic' or 'enhance')
+            
+        Returns:
+            ParseResult or None if not found
+        """
+        key = (document_id, page_number, mode)
+        return self._parse_results.get(key)
     
     def _get_file_type(self, filename: str) -> str:
         """Extract file type from filename.

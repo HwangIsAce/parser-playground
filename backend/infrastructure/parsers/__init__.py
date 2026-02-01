@@ -21,4 +21,16 @@ except (ImportError, RuntimeError) as e:
     # Chandra not installed or GPU not available, skip registration
     pass
 
+# Register Remote parsers (if enabled)
+from config import settings
+if settings.PARSER_API_ENABLED:
+    try:
+        from infrastructure.parsers.remote_docling_parser import RemoteDoclingParser
+        from infrastructure.parsers.remote_chandra_parser import RemoteChandraParser
+        ParserFactory.register("docling-remote", RemoteDoclingParser)
+        ParserFactory.register("chandra-remote", RemoteChandraParser)
+    except ImportError as e:
+        # Remote parser dependencies not available, skip registration
+        pass
+
 __all__ = ["ParserFactory", "UnstructuredParser"]

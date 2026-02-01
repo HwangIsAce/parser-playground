@@ -20,13 +20,20 @@ class ParserService:
         
         Note:
             - Maps mode to parser names
-            - basic -> docling
-            - enhance -> chandra
+            - If PARSER_API_ENABLED is True, uses remote parsers
+            - Otherwise, uses local parsers (docling, chandra)
         """
-        self.mode_mapping = {
-            "basic": "docling",
-            "enhance": "chandra",
-        }
+        # Set mode mapping based on configuration
+        if settings.PARSER_API_ENABLED:
+            self.mode_mapping = {
+                "basic": "docling-remote",
+                "enhance": "chandra-remote",
+            }
+        else:
+            self.mode_mapping = {
+                "basic": "docling",
+                "enhance": "chandra",
+            }
         self.default_mode = getattr(settings, 'DEFAULT_PARSE_MODE', 'basic')
         self._parser_cache: Dict[str, ParserInterface] = {}
     

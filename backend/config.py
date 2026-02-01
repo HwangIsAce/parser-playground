@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     
+    # Parser API Settings (Remote)
+    PARSER_API_ENABLED: bool = False  # Set to True to use remote parser API
+    PARSER_API_BASE_URL: str = "http://194.68.245.144:22110"
+    PARSER_API_TIMEOUT: int = 360  # Timeout in seconds (6 minutes)
+    PARSER_API_RETRY_COUNT: int = 3  # Number of retry attempts
+    PARSER_API_RETRY_DELAY: float = 1.0  # Delay between retries in seconds
+    
     class Config:
         """Pydantic config."""
         env_file = ".env"

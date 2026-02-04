@@ -142,12 +142,12 @@ class RemoteChandraParser(BaseParser):
         Returns:
             ParseResult containing parsed data
         """
-        # Extract data from API response
+        # Extract data from API response (API may return json: null)
         text = api_response.get("text", "")
         markdown = api_response.get("markdown", "")
         html = api_response.get("html", "")
-        json_data = api_response.get("json", {})
-        metadata = api_response.get("metadata", {})
+        json_data = api_response.get("json") or {}
+        metadata = api_response.get("metadata") or {}
         api_id = api_response.get("id", "")
         
         # Generate full content

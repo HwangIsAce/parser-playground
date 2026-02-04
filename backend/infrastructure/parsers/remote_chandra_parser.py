@@ -60,13 +60,13 @@ class RemoteChandraParser(BaseParser):
         # Load file content (convert PDF to image if needed)
         file_content, filename = self._prepare_file_content(document)
         
-        # Call remote API
+        # Call remote API — request HTML so we get <table> for column layout
         try:
             api_response = self.client.process_ocr(
                 filename,
                 file_content,
                 prompt_type="ocr_layout",
-                output_format="markdown"
+                output_format="html"
             )
         except Exception as e:
             raise ValueError(f"Failed to call remote Chandra API: {str(e)}")
@@ -128,6 +128,42 @@ class RemoteChandraParser(BaseParser):
             filename = document.filename
             return file_content, filename
     
+    @staticmethod
+    def _markdown_tables_to_html(markdown: str) -> List[str]:
+        """Convert markdown pipe tables to HTML table strings.
+        
+        Returns list of HTML <table>...</table> strings (empty if none found).
+        """
+        def escape(s: str) -> str:
+            return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+        lines = markdown.splitlines()
+        tables_html: List[str] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if line.strip().startswith("|") and line.strip().endswith("|"):
+                table_lines = [line]
+                i += 1
+                while i < len(lines) and lines[i].strip().startswith("|") and lines[i].strip().endswith("|"):
+                    table_lines.append(lines[i])
+                    i += 1
+                rows = []
+                for j, row_line in enumerate(table_lines):
+                    cells = [c.strip() for c in row_line.strip().strip("|").split("|")]
+                    if not cells:
+                        continue
+                    if j == 1 and all(re.match(r"^[-:]+$", c) for c in cells):
+                        continue
+                    is_header = j == 0
+                    tag = "th" if is_header else "td"
+                    rows.append(f"<tr>{''.join(f'<{tag}>{escape(c)}</{tag}>' for c in cells)}</tr>")
+                if rows:
+                    tables_html.append(f"<table><tbody>{''.join(rows)}</tbody></table>")
+                continue
+            i += 1
+        return tables_html
+
     def _convert_api_response(
         self,
         api_response: dict,
@@ -196,6 +232,10 @@ class RemoteChandraParser(BaseParser):
                 re.DOTALL | re.IGNORECASE
             )
             
+            # If no HTML tables but we have markdown, try markdown pipe tables
+            if not html_tables and markdown:
+                html_tables = self._markdown_tables_to_html(markdown)
+            
             if html_tables:
                 # Add tables as separate blocks
                 for table_html in html_tables:
@@ -247,7 +287,8 @@ class RemoteChandraParser(BaseParser):
                     )
                     element_id += 1
             else:
-                # Single text block
+                # Single text block — no <table> or markdown pipe table from API; keep as text.
+                # Table layout should come from the parser API (HTML/JSON) to match original columns.
                 content_text = text if text else (markdown if markdown else "")
                 blocks.append(
                     Block(

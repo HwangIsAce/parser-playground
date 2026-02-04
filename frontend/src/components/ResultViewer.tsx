@@ -137,6 +137,22 @@ export default function ResultViewer({
     return text.replace(/[&<>"']/g, (m) => map[m])
   }
 
+  /** Whether this block should be rendered as an HTML table (from content.html or raw HTML in text). */
+  const isTableHtml = (block: { type: string; text?: string; content?: { html?: string } }): boolean => {
+    if (block.type === 'table') return true
+    const raw = (block.content?.html ?? block.text ?? '').trim()
+    return /<table[\s>]/i.test(raw)
+  }
+
+  /** HTML string to use for table rendering (content.html or text when it contains <table>). */
+  const getTableHtml = (block: { text?: string; content?: { html?: string } }): string => {
+    const fromContent = (block.content?.html ?? '').trim()
+    if (fromContent && /<table[\s>]/i.test(fromContent)) return fromContent
+    const fromText = (block.text ?? '').trim()
+    if (fromText && /<table[\s>]/i.test(fromText)) return fromText
+    return ''
+  }
+
   const renderTabContent = () => {
     if (!parseResult) {
       return (
@@ -193,9 +209,18 @@ export default function ResultViewer({
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-900 whitespace-pre-wrap break-words">
-                      {block.text}
-                    </p>
+                    {isTableHtml(block) ? (
+                      <div
+                        className="parse-result-table overflow-x-auto rounded border border-gray-200 bg-white"
+                        dangerouslySetInnerHTML={{
+                          __html: getTableHtml(block),
+                        }}
+                      />
+                    ) : (
+                      <p className="text-gray-900 whitespace-pre-wrap break-words">
+                        {block.text}
+                      </p>
+                    )}
                     {block.metadata && Object.keys(block.metadata).length > 0 && (
                       <div className="mt-2 pt-2 border-t border-gray-100">
                         <details className="text-xs">
@@ -296,8 +321,8 @@ export default function ResultViewer({
           </div>
         </div>
 
-        {/* Right: Parsed Result with Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        {/* Right: Parsed Result with Tabs — min-w-0 so grid column can shrink and inner overflow-x works */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,8 +359,8 @@ export default function ResultViewer({
             </nav>
           </div>
 
-          {/* Tab Content */}
-          <div className="max-h-[600px] overflow-y-auto">
+          {/* Tab Content — tall enough to show table; scroll vertically and horizontally when needed */}
+          <div className="min-h-[400px] max-h-[75vh] overflow-auto min-w-0">
             {renderTabContent()}
           </div>
         </div>

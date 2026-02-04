@@ -60,6 +60,23 @@
   }
 }
 
+/* Parsed result table: cell borders, allow table to extend for horizontal scroll */
+.parse-result-table {
+  @apply min-w-0;
+}
+.parse-result-table table {
+  @apply border-collapse text-sm;
+  min-width: max-content;
+  width: max-content;
+}
+.parse-result-table th,
+.parse-result-table td {
+  @apply border border-gray-300 px-2 py-1.5 text-left align-top whitespace-nowrap;
+}
+.parse-result-table th {
+  @apply bg-gray-100 font-medium;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

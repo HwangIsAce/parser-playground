@@ -1,10 +1,15 @@
 """RQ worker tasks for document parsing."""
+import logging
+from pathlib import Path
+
 from rq import get_current_job
 
 from core.models.job import JobStatus
 from application.services.parser_service import ParserService
 from application.services.document_service import DocumentService
 from application.services.job_service import JobService
+
+logger = logging.getLogger(__name__)
 
 # Services (singleton instances)
 # Note: These are created per worker process
@@ -20,33 +25,41 @@ def parse_document_task(
     mode: str
 ) -> dict:
     """RQ task for parsing a document.
-    
+
     Args:
         job_id: Job ID
         document_id: Document ID
         page_number: Page number (0-indexed)
         mode: Parse mode ('basic' or 'enhance')
-        
+
     Returns:
         Dict with parse result data
-        
+
     Note:
         - Updates job status during processing
         - Saves parse result to cache
+        - Uses remote parser API (194.68.245.19:22159) when PARSER_API_ENABLED=True
     """
-    # Get current RQ job for progress tracking (optional)
+    from config import settings
+    logger.info(
+        "parse_document_task start: job_id=%s document_id=%s mode=%s PARSER_API=%s %s",
+        job_id, document_id, mode,
+        getattr(settings, "PARSER_API_ENABLED", None),
+        getattr(settings, "PARSER_API_BASE_URL", ""),
+    )
     rq_job = get_current_job()
-    
+
     try:
-        # Update job status to processing
         job_service.update_job_status(job_id, JobStatus.PROCESSING)
-        
-        # Get document
+
         document = document_service.get_by_id(document_id)
         if not document:
             raise ValueError(f"Document not found: {document_id}")
-        
-        # Parse document
+
+        # Ensure worker can read the file (file_path must be absolute; see FileStorage.save)
+        if not Path(document.file_path).exists():
+            raise FileNotFoundError(f"Document file not found: {document.file_path}")
+
         parse_result = parser_service.parse_document(document, mode=mode)
         
         # Save parse result to cache

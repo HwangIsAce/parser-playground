@@ -13,33 +13,34 @@ class FileStorage(StorageInterface):
     
     def __init__(self, base_dir: str = None):
         """Initialize file storage.
-        
+
         Args:
             base_dir: Base directory for file storage
         """
-        self.base_dir = Path(base_dir or settings.UPLOAD_DIR)
+        self.base_dir = Path(base_dir or settings.UPLOAD_DIR).resolve()
         self.base_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def save(self, file_content: bytes, filename: str) -> str:
-        """Save file and return file path.
-        
+        """Save file and return absolute file path.
+
+        Returns an absolute path so the worker can load the file regardless of
+        its current working directory (API and worker may run with different cwd).
+
         Args:
             file_content: File content as bytes
             filename: Original filename
-            
+
         Returns:
-            Path where file is saved
+            Absolute path where file is saved
         """
-        # Generate unique filename
         file_ext = Path(filename).suffix
         unique_filename = f"{uuid.uuid4()}{file_ext}"
         file_path = self.base_dir / unique_filename
-        
-        # Save file
+
         with open(file_path, 'wb') as f:
             f.write(file_content)
-        
-        return str(file_path)
+
+        return str(file_path.resolve())
     
     def load(self, file_path: str) -> bytes:
         """Load file content.

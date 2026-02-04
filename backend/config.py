@@ -54,8 +54,9 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     
     # Parser API Settings (Remote) — docling/chandra requests go here
-    PARSER_API_ENABLED: bool = True  # Use remote parser API at 194.68.245.19:22159
-    PARSER_API_BASE_URL: str = "http://194.68.245.19:22159"
+    # Override in .env: PARSER_API_BASE_URL, PARSER_API_ENABLED (False = use local parsers)
+    PARSER_API_ENABLED: bool = True  # Use remote parser API
+    PARSER_API_BASE_URL: str = "http://194.68.245.19:22159"  # Must be reachable; Connection refused = server down or unreachable
     PARSER_API_TIMEOUT: int = 360  # Timeout in seconds (6 minutes)
     PARSER_API_RETRY_COUNT: int = 3  # Number of retry attempts
     PARSER_API_RETRY_DELAY: float = 1.0  # Delay between retries in seconds

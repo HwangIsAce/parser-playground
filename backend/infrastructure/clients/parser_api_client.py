@@ -56,6 +56,7 @@ class ParserAPIClient:
         self.timeout = timeout
         self.retry_count = retry_count
         self.retry_delay = retry_delay
+        logger.info("ParserAPIClient initialized: base_url=%s timeout=%ss", self.base_url, self.timeout)
     
     def process_document(
         self,
@@ -198,7 +199,15 @@ class ParserAPIClient:
                     raise ParserAPIError(last_error)
             
             except Exception as e:
-                last_error = f"Unexpected error: {str(e)}"
+                err_str = str(e)
+                if "61" in err_str or "Connection refused" in err_str or "Errno 61" in err_str:
+                    last_error = (
+                        f"Connection refused to {self.base_url}. "
+                        "Check that the parser server is running and reachable "
+                        "(PARSER_API_BASE_URL in config or .env)."
+                    )
+                else:
+                    last_error = f"Unexpected error: {err_str}"
                 logger.error(f"Attempt {attempt}/{self.retry_count}: {last_error}")
                 if attempt == self.retry_count:
                     raise ParserAPIError(last_error)

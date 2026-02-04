@@ -22,15 +22,23 @@ except (ImportError, RuntimeError) as e:
     pass
 
 # Register Remote parsers (if enabled)
+import logging
 from config import settings
+
+_log = logging.getLogger(__name__)
 if settings.PARSER_API_ENABLED:
     try:
         from infrastructure.parsers.remote_docling_parser import RemoteDoclingParser
         from infrastructure.parsers.remote_chandra_parser import RemoteChandraParser
         ParserFactory.register("docling-remote", RemoteDoclingParser)
         ParserFactory.register("chandra-remote", RemoteChandraParser)
+        _log.info(
+            "Remote parsers registered: docling-remote, chandra-remote → %s",
+            settings.PARSER_API_BASE_URL,
+        )
     except ImportError as e:
-        # Remote parser dependencies not available, skip registration
-        pass
+        _log.warning("Remote parser registration skipped: %s", e)
+else:
+    _log.info("PARSER_API_ENABLED=False: using local parsers only")
 
 __all__ = ["ParserFactory", "UnstructuredParser"]

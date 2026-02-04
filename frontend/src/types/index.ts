@@ -19,6 +19,8 @@ export interface Block {
     height: number
   }
   metadata?: Record<string, any>
+  /** Table/block HTML from parser (use for table layout) */
+  content?: { html?: string; markdown?: string; text?: string }
 }
 
 export interface ParseResult {

@@ -48,6 +48,36 @@ async def upload_document_from_url(request: DocumentCreate):
     )
 
 
+@router.get("/documents/{document_id}/xlsx-preview")
+async def get_document_preview(document_id: str):
+    """Get xlsx preview (first sheet as table data). Returns 404 for non-xlsx."""
+    document = document_service.get_by_id(document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    ft = (document.file_type or "").strip().lower()
+    if ft not in ("xlsx", "xls"):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Preview only supported for xlsx (document type is '{document.file_type}')",
+        )
+    from pathlib import Path
+    if not Path(document.file_path).is_file():
+        raise HTTPException(status_code=404, detail="File not found on server")
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(document.file_path, read_only=True, data_only=True)
+        ws = wb.active
+        if not ws:
+            return {"sheet_name": "", "rows": []}
+        rows = []
+        for row in ws.iter_rows(values_only=True):
+            rows.append([str(c) if c is not None else "" for c in row])
+        wb.close()
+        return {"sheet_name": ws.title, "rows": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read xlsx: {str(e)}")
+
+
 @router.get("/documents/{document_id}", response_model=DocumentResponse)
 async def get_document(document_id: str):
     """Get document information.
@@ -56,7 +86,7 @@ async def get_document(document_id: str):
         document_id: Document ID
         
     Returns:
-        DocumentResponse with document information
+        Document response with document information
     """
     document = document_service.get_by_id(document_id)
     if not document:

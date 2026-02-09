@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import {
   getDocument,
   getPageImageUrl,
+  getDocumentPreview,
   getChunkingStatus,
   getChunkingResult,
   pollChunkingUntilComplete,
@@ -151,6 +152,69 @@ export default function ChunkingResultPage() {
   )
 }
 
+function XlsxPreview({ documentId }: { documentId: string }) {
+  const [preview, setPreview] = useState<{ sheet_name: string; rows: string[][] } | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    getDocumentPreview(documentId)
+      .then(setPreview)
+      .catch((e) => setErr(e instanceof Error ? e.message : '미리보기 로드 실패'))
+  }, [documentId])
+
+  if (err) {
+    return (
+      <div className="text-gray-500 text-center py-8 text-sm">
+        미리보기를 불러올 수 없습니다. {err}
+      </div>
+    )
+  }
+  if (!preview || preview.rows.length === 0) {
+    return (
+      <div className="text-gray-500 text-center py-8">
+        <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+        <p className="mt-2">미리보기 로딩 중...</p>
+      </div>
+    )
+  }
+
+  const header = preview.rows[0] ?? []
+  const bodyRows = preview.rows.slice(1)
+  return (
+    <div className="overflow-auto max-h-[70vh]">
+      <p className="text-xs text-gray-500 mb-2">시트: {preview.sheet_name}</p>
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            {header.map((cell, i) => (
+              <th
+                key={i}
+                className="border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-medium"
+              >
+                {cell}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {bodyRows.map((row, ri) => (
+            <tr key={ri}>
+              {row?.map((cell, ci) => (
+                <td
+                  key={ci}
+                  className="border border-gray-200 px-2 py-1 text-gray-800"
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function DocumentViewer({ document }: { document: Document }) {
   const [page, setPage] = useState(0)
   const pageCount = document.page_count || 1
@@ -166,11 +230,7 @@ function DocumentViewer({ document }: { document: Document }) {
   }
 
   if (document.file_type?.toLowerCase() === 'xlsx') {
-    return (
-      <div className="text-gray-500 text-center py-12">
-        .xlsx 파일은 페이지 미리보기를 지원하지 않습니다.
-      </div>
-    )
+    return <XlsxPreview documentId={document.id} />
   }
 
   return (

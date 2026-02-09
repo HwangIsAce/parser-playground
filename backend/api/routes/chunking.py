@@ -65,10 +65,14 @@ async def chunking_parse(
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         logger.exception("Chunking parse failed: %s", e)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal error: {str(e)}. Check Redis is running and Peter-parser at {settings.PETER_PARSER_BASE_URL}."
-        ) from e
+        err_msg = str(e)
+        if "redis" in err_msg.lower() or "connection refused" in err_msg.lower():
+            detail = f"Redis 연결 실패. Redis가 실행 중인지 확인하세요. ({err_msg})"
+        elif "8001" in err_msg or "peter-parser" in err_msg.lower():
+            detail = f"Peter-parser(8001) 연결 실패. 서버가 실행 중인지 확인하세요. ({err_msg})"
+        else:
+            detail = f"Internal error: {err_msg}"
+        raise HTTPException(status_code=500, detail=detail) from e
 
 
 @router.get("/chunking/status/{job_id}")

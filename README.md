@@ -45,12 +45,16 @@ uv run rq worker parse_queue
 
 ### Chunking (Peter-parser)
 
-Chunking requires Peter-parser and its RQ worker:
+Chunking requires Peter-parser and its RQ worker.  
+**경로:** 아래는 `playground`와 `pipelines`가 **같은 단계에 있는 디렉터리**(예: `source`) 기준입니다.  
+`playground` 안에 있다면 Peter-parser는 `cd ../pipelines/parsing-pipeline/peter-parser` 로 이동하세요.
 
 ```bash
 # Terminal 1: Peter-parser (port 8001)
-cd pipelines/parsing-pipeline/peter-parser
-uv run python main.py# Terminal 2: Peter-parser RQ worker
+cd pipelines/parsing-pipeline/peter-parser   # 또는 playground 안이면: cd ../pipelines/parsing-pipeline/peter-parser
+uv run python main.py
+
+# Terminal 2: Peter-parser RQ worker
 cd pipelines/parsing-pipeline/peter-parser
 uv run python -m peter_parser.worker
 

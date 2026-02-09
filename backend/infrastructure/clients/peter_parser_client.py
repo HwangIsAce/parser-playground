@@ -69,9 +69,10 @@ class PeterParserClient:
         url = f"{self.base_url}/parse"
         files = {"file": (filename, file_content)}
         data = {"document_type": doc_type}
+        timeout = httpx.Timeout(self.timeout)
 
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=timeout) as client:
                 response = client.post(url, files=files, data=data)
         except httpx.ConnectError as e:
             raise PeterParserError(
@@ -93,7 +94,7 @@ class PeterParserClient:
         """
         url = f"{self.base_url}/status/{job_id}"
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=httpx.Timeout(self.timeout)) as client:
                 response = client.get(url)
         except httpx.ConnectError as e:
             raise PeterParserError(
@@ -112,7 +113,7 @@ class PeterParserClient:
         """
         url = f"{self.base_url}/result/{job_id}"
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=httpx.Timeout(self.timeout)) as client:
                 response = client.get(url)
         except httpx.ConnectError as e:
             raise PeterParserError(

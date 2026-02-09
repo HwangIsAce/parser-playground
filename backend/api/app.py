@@ -1,9 +1,14 @@
 """FastAPI application setup."""
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from api.routes import documents, parse, jobs, chunking
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -63,5 +68,16 @@ def create_app() -> FastAPI:
     async def health():
         """Health check endpoint."""
         return {"status": "healthy"}
-    
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        """Ensure every unhandled exception returns JSON with detail (no HTML 500)."""
+        logger.exception("Unhandled exception: %s", exc)
+        msg = str(exc).strip() or type(exc).__name__
+        detail = f"{type(exc).__name__}: {msg}" if msg != type(exc).__name__ else msg
+        return JSONResponse(
+            status_code=500,
+            content={"detail": detail},
+        )
+
     return app

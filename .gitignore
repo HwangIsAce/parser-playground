@@ -61,3 +61,6 @@ htmlcov/
 
 # Streamlit
 .streamlit/
+
+# Sample/test files (keep locally for E2E)
+sample_excel.xlsx

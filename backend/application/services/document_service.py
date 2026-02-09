@@ -2,6 +2,7 @@
 import uuid
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Dict, Tuple
 
 from fastapi import UploadFile
@@ -80,7 +81,55 @@ class DocumentService:
         self._redis.set(key, self._serialize_document(document))
         
         return document
-    
+
+    def create_from_bytes(
+        self,
+        file_content: bytes,
+        filename: str,
+        content_type: Optional[str] = None
+    ) -> Document:
+        """Create document from file bytes (for chunking flow).
+
+        Args:
+            file_content: File content as bytes
+            filename: Original filename
+            content_type: Optional MIME type
+
+        Returns:
+            Document entity with correct page_count for PDF
+        """
+        file_path = self.storage.save(file_content, filename)
+        file_type = self._get_file_type(filename)
+        page_count = self._get_page_count(file_path, file_type)
+
+        document = Document(
+            id=str(uuid.uuid4()),
+            filename=filename,
+            file_type=file_type,
+            file_path=file_path,
+            page_count=page_count,
+            status=DocumentStatus.COMPLETED,
+            created_at=datetime.now(),
+            metadata={
+                "original_filename": filename,
+                "content_type": content_type,
+            },
+        )
+        key = self._document_key(document.id)
+        self._redis.set(key, self._serialize_document(document))
+        return document
+
+    def _get_page_count(self, file_path: str, file_type: str) -> int:
+        """Get page count for document. PDF uses pdf2image; others return 1."""
+        if file_type.lower() != "pdf":
+            return 1
+        try:
+            from pdf2image import convert_from_path
+            images = convert_from_path(file_path)
+            return len(images)
+        except Exception:
+            return 1
+
     def get_by_id(self, document_id: str) -> Optional[Document]:
         """Get document by ID.
         

@@ -87,17 +87,20 @@ class FileStorage(StorageInterface):
         if document.is_image():
             return self.load(document.file_path)
         
-        # For PDF, convert to image
+        # For PDF, convert requested page only (1-based)
         if document.is_pdf():
             try:
                 from pdf2image import convert_from_path
                 import io
-                
-                # Convert PDF page to image
-                images = convert_from_path(document.file_path)
-                if page_number < len(images):
+                first = page_number + 1
+                images = convert_from_path(
+                    document.file_path,
+                    first_page=first,
+                    last_page=first,
+                )
+                if images:
                     img_byte_arr = io.BytesIO()
-                    images[page_number].save(img_byte_arr, format='PNG')
+                    images[0].save(img_byte_arr, format='PNG')
                     return img_byte_arr.getvalue()
                 return None
             except ImportError:

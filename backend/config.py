@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     PARSER_API_RETRY_COUNT: int = 3  # Number of retry attempts
     PARSER_API_RETRY_DELAY: float = 1.0  # Delay between retries in seconds
     
+    # Peter-parser API Settings (Chunking) — POST /parse, GET /status, GET /result
+    PETER_PARSER_BASE_URL: str = "http://localhost:8001"
+    PETER_PARSER_TIMEOUT: int = 360  # Timeout in seconds (6 minutes)
+    
     class Config:
         """Pydantic config."""
         env_file = ".env"

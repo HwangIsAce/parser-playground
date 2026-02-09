@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import documents, parse, jobs
+from api.routes import documents, parse, jobs, chunking
 from config import settings
 
 
@@ -42,6 +42,11 @@ def create_app() -> FastAPI:
         jobs.router,
         prefix="/api/v1",
         tags=["jobs"],
+    )
+    app.include_router(
+        chunking.router,
+        prefix="/api/v1",
+        tags=["chunking"],
     )
     
     # Root endpoint

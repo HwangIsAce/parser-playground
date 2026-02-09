@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     
     # Peter-parser API Settings (Chunking) — POST /parse, GET /status, GET /result
     PETER_PARSER_BASE_URL: str = "http://localhost:8001"
-    PETER_PARSER_TIMEOUT: int = 360  # Timeout in seconds (6 minutes)
+    PETER_PARSER_TIMEOUT: int = 60  # Timeout in seconds (parse should return quickly)
     
     class Config:
         """Pydantic config."""

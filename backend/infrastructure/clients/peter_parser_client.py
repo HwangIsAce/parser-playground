@@ -70,8 +70,18 @@ class PeterParserClient:
         files = {"file": (filename, file_content)}
         data = {"document_type": doc_type}
 
-        with httpx.Client(timeout=self.timeout) as client:
-            response = client.post(url, files=files, data=data)
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.post(url, files=files, data=data)
+        except httpx.ConnectError as e:
+            raise PeterParserError(
+                f"Cannot connect to Peter-parser at {self.base_url}. "
+                "Ensure Peter-parser server is running (e.g. port 8001)."
+            ) from e
+        except httpx.TimeoutException as e:
+            raise PeterParserError(f"Peter-parser request timeout: {e}") from e
+        except httpx.RequestError as e:
+            raise PeterParserError(f"Peter-parser request failed: {e}") from e
 
         return self._handle_response(response, url)
 
@@ -82,8 +92,16 @@ class PeterParserClient:
             {"job_id": str, "status": str, "error": str|None, "created_at": str}
         """
         url = f"{self.base_url}/status/{job_id}"
-        with httpx.Client(timeout=self.timeout) as client:
-            response = client.get(url)
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(url)
+        except httpx.ConnectError as e:
+            raise PeterParserError(
+                f"Cannot connect to Peter-parser at {self.base_url}. "
+                "Ensure Peter-parser server is running."
+            ) from e
+        except (httpx.TimeoutException, httpx.RequestError) as e:
+            raise PeterParserError(f"Peter-parser request failed: {e}") from e
         return self._handle_response(response, url, not_found_ok=True)
 
     def get_result(self, job_id: str) -> Dict[str, Any]:
@@ -93,8 +111,16 @@ class PeterParserClient:
             {"chunks": [...]}
         """
         url = f"{self.base_url}/result/{job_id}"
-        with httpx.Client(timeout=self.timeout) as client:
-            response = client.get(url)
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(url)
+        except httpx.ConnectError as e:
+            raise PeterParserError(
+                f"Cannot connect to Peter-parser at {self.base_url}. "
+                "Ensure Peter-parser server is running."
+            ) from e
+        except (httpx.TimeoutException, httpx.RequestError) as e:
+            raise PeterParserError(f"Peter-parser request failed: {e}") from e
         return self._handle_response(response, url, not_found_ok=True)
 
     def _validate_document_type_and_extension(self, document_type: str, filename: str) -> None:

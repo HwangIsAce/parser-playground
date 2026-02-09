@@ -1,4 +1,6 @@
 """Chunking API routes — proxy to Peter-parser (POST /parse, GET /status, GET /result)."""
+import logging
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from application.services.document_service import DocumentService
@@ -10,6 +12,7 @@ from infrastructure.clients.peter_parser_client import (
     PeterParserServerError,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 document_service = DocumentService()
 peter_parser_client = PeterParserClient(
@@ -60,6 +63,12 @@ async def chunking_parse(
         raise HTTPException(status_code=502, detail=str(e))
     except PeterParserError as e:
         raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("Chunking parse failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal error: {str(e)}. Check Redis is running and Peter-parser at {settings.PETER_PARSER_BASE_URL}."
+        ) from e
 
 
 @router.get("/chunking/status/{job_id}")
@@ -74,6 +83,9 @@ async def chunking_status(job_id: str):
         raise HTTPException(status_code=400, detail=str(e))
     except (PeterParserServerError, PeterParserError) as e:
         raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("Chunking status failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/chunking/result/{job_id}")
@@ -88,3 +100,6 @@ async def chunking_result(job_id: str):
         raise HTTPException(status_code=400, detail=str(e))
     except (PeterParserServerError, PeterParserError) as e:
         raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("Chunking result failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e

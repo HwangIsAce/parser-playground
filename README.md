@@ -54,9 +54,9 @@ Chunking requires Peter-parser and its RQ worker.
 cd pipelines/parsing-pipeline/peter-parser   # 또는 playground 안이면: cd ../pipelines/parsing-pipeline/peter-parser
 uv run python main.py
 
-# Terminal 2: Peter-parser RQ worker
-cd pipelines/parsing-pipeline/peter-parser
-uv run python -m peter_parser.worker
+# Terminal 2: Peter-parser RQ worker (필수 — 없으면 Chunking이 pending에서 멈춤)
+cd pipelines/parsing-pipeline/peter-parser   # playground 안이면: cd ../pipelines/parsing-pipeline/peter-parser
+uv run python -m peter_parser.worker         # 또는: ./scripts/start_peter_parser_worker.sh
 
 # Terminal 3: Playground backend (port 8000)
 cd playground/backend

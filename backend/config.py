@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     # Parser API Settings (Remote) — docling/chandra requests go here
     # Override in .env: PARSER_API_BASE_URL, PARSER_API_ENABLED (False = use local parsers)
     PARSER_API_ENABLED: bool = True  # Use remote parser API
-    PARSER_API_BASE_URL: str = "http://69.30.85.154:22089"  # Must be reachable; Connection refused = server down or unreachable
+    PARSER_API_BASE_URL: str = "http://63.141.33.56:22135"  # Must be reachable; Connection refused = server down or unreachable
     PARSER_API_TIMEOUT: int = 360  # Timeout in seconds (6 minutes)
     PARSER_API_RETRY_COUNT: int = 3  # Number of retry attempts
     PARSER_API_RETRY_DELAY: float = 1.0  # Delay between retries in seconds

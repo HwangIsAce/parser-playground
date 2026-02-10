@@ -1,6 +1,7 @@
 """FastAPI application setup."""
 import logging
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -68,6 +69,26 @@ def create_app() -> FastAPI:
     async def health():
         """Health check endpoint."""
         return {"status": "healthy"}
+
+    # Startup: log Peter-parser URL and check reachability (localhost only)
+    @app.on_event("startup")
+    async def startup_peter_parser_check():
+        base = getattr(settings, "PETER_PARSER_BASE_URL", "").strip().rstrip("/")
+        logger.info("Chunking → Peter-parser: PETER_PARSER_BASE_URL=%s", base or "(not set)")
+        if not base:
+            return
+        if "localhost" in base or "127.0.0.1" in base:
+            try:
+                with httpx.Client(timeout=2.0) as client:
+                    r = client.get(f"{base}/docs")
+            except Exception as e:
+                logger.warning(
+                    "Peter-parser unreachable at %s (chunking will fail): %s",
+                    base,
+                    e,
+                )
+            else:
+                logger.info("Peter-parser reachable at %s", base)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):

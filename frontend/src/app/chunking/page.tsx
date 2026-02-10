@@ -104,6 +104,13 @@ export default function ChunkingPage() {
           <p className="text-gray-600">
             문서를 업로드하여 청크 단위로 분할합니다. (RAG/임베딩용)
           </p>
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-xs text-gray-400 mt-2 font-mono">
+              API: {typeof window !== 'undefined'
+                ? (process.env.NEXT_PUBLIC_API_URL || '(relative /api/v1 → rewrite)')
+                : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}
+            </p>
+          )}
         </div>
 
         {/* Document Type Selection */}

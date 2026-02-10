@@ -21,6 +21,15 @@ peter_parser_client = PeterParserClient(
 )
 
 
+@router.get("/chunking/config")
+async def chunking_config():
+    """Development: show where chunking requests are sent (no secrets)."""
+    return {
+        "peter_parser_base_url": settings.PETER_PARSER_BASE_URL,
+        "timeout": settings.PETER_PARSER_TIMEOUT,
+    }
+
+
 @router.post("/chunking/parse", status_code=202)
 async def chunking_parse(
     file: UploadFile = File(...),
@@ -36,6 +45,13 @@ async def chunking_parse(
 
     file_content = await file.read()
     doc_type = (document_type or "plain").strip().lower()
+    logger.info(
+        "Chunking request: filename=%s document_type=%s size=%d → Peter-parser=%s",
+        file.filename,
+        doc_type,
+        len(file_content),
+        settings.PETER_PARSER_BASE_URL,
+    )
 
     try:
         # 1. Save to Playground (for document viewer / page images)
@@ -51,6 +67,7 @@ async def chunking_parse(
             filename=file.filename,
             document_type=doc_type,
         )
+        logger.info("Chunking → Peter-parser OK: job_id=%s", result.get("job_id"))
 
         return {
             "job_id": result["job_id"],

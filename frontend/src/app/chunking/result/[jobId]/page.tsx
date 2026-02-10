@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import {
   getDocument,
   getPageImageUrl,
+  getDocumentXlsxSheets,
   getDocumentPreview,
   getChunkingStatus,
   getChunkingResult,
@@ -112,105 +113,144 @@ export default function ChunkingResultPage() {
         </button>
       </div>
 
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Left: Document viewer */}
-        <div className="w-1/2 border-r bg-white overflow-auto p-6">
-          {document && (
-            <DocumentViewer document={document} />
-          )}
-          {!document && error && (
-            <div className="text-gray-500 text-center py-12">
-              문서를 불러올 수 없습니다.
-            </div>
-          )}
-        </div>
+      {/* 왼쪽 원본 | 오른쪽 청킹 결과 — 완전 분리 */}
+      <div className="grid grid-cols-2 h-[calc(100vh-80px)] w-full">
+        {/* 왼쪽: 원본 */}
+        <section className="border-r-2 border-gray-300 bg-white overflow-hidden flex flex-col min-h-0">
+          <div className="overflow-auto p-6 flex-1 min-h-0">
+            {document && (
+              <DocumentViewer document={document} />
+            )}
+            {!document && error && (
+              <div className="text-gray-500 text-center py-12">문서를 불러올 수 없습니다.</div>
+            )}
+          </div>
+        </section>
 
-        {/* Right: Chunks */}
-        <div className="w-1/2 overflow-auto p-6">
-          {loading ? (
-            <div className="flex items-center gap-3 text-gray-600">
-              <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-              <span>Chunking 처리 중...</span>
-            </div>
-          ) : error ? (
-            <div className="text-red-600">{error}</div>
-          ) : chunks.length === 0 ? (
-            <div className="text-gray-500">청크가 없습니다.</div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm font-medium text-gray-600">
-                {chunks.length}개 청크
-              </p>
-              {chunks.map((c, idx) => (
-                <ChunkCard key={c.uuid || idx} chunk={c} index={idx} />
-              ))}
-            </div>
-          )}
-        </div>
+        {/* 오른쪽: 청킹 결과 */}
+        <section className="bg-gray-50 overflow-hidden flex flex-col min-h-0">
+          <div className="overflow-auto p-6 flex-1 min-h-0">
+            {loading ? (
+              <div className="flex items-center gap-3 text-gray-600">
+                <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+                <span>Chunking 처리 중...</span>
+              </div>
+            ) : error ? (
+              <div className="text-red-600">{error}</div>
+            ) : chunks.length === 0 ? (
+              <div className="text-gray-500">청크가 없습니다.</div>
+            ) : (
+              <div className="space-y-4">
+                {chunks.map((c, idx) => (
+                  <ChunkCard key={c.uuid || idx} chunk={c} index={idx} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   )
 }
 
 function XlsxPreview({ documentId }: { documentId: string }) {
+  const [sheets, setSheets] = useState<{ index: number; name: string }[]>([])
+  const [sheetIndex, setSheetIndex] = useState(0)
   const [preview, setPreview] = useState<{ sheet_name: string; rows: string[][] } | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
 
   useEffect(() => {
-    getDocumentPreview(documentId)
-      .then(setPreview)
-      .catch((e) => setErr(e instanceof Error ? e.message : '미리보기 로드 실패'))
+    getDocumentXlsxSheets(documentId)
+      .then((r) => {
+        setSheets(r.sheets || [])
+        if ((r.sheets?.length ?? 0) > 0) setSheetIndex(0)
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : '시트 목록 로드 실패'))
   }, [documentId])
 
-  if (err) {
+  useEffect(() => {
+    if (sheets.length === 0) return
+    setLoadingPreview(true)
+    getDocumentPreview(documentId, sheetIndex)
+      .then(setPreview)
+      .catch((e) => setErr(e instanceof Error ? e.message : '미리보기 로드 실패'))
+      .finally(() => setLoadingPreview(false))
+  }, [documentId, sheetIndex, sheets.length])
+
+  if (err && sheets.length === 0) {
     return (
       <div className="text-gray-500 text-center py-8 text-sm">
         미리보기를 불러올 수 없습니다. {err}
       </div>
     )
   }
-  if (!preview || preview.rows.length === 0) {
+  if (sheets.length === 0) {
     return (
       <div className="text-gray-500 text-center py-8">
         <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-        <p className="mt-2">미리보기 로딩 중...</p>
+        <p className="mt-2">시트 목록 로딩 중...</p>
       </div>
     )
   }
 
-  const header = preview.rows[0] ?? []
-  const bodyRows = preview.rows.slice(1)
+  const header = preview?.rows?.[0] ?? []
+  const bodyRows = preview?.rows?.slice(1) ?? []
   return (
-    <div className="overflow-auto max-h-[70vh]">
-      <p className="text-xs text-gray-500 mb-2">시트: {preview.sheet_name}</p>
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            {header.map((cell, i) => (
-              <th
-                key={i}
-                className="border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-medium"
-              >
-                {cell}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {bodyRows.map((row, ri) => (
-            <tr key={ri}>
-              {row?.map((cell, ci) => (
-                <td
-                  key={ci}
-                  className="border border-gray-200 px-2 py-1 text-gray-800"
-                >
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5 border-b border-gray-200 pb-2">
+        {sheets.map((s) => (
+          <button
+            key={s.index}
+            type="button"
+            onClick={() => setSheetIndex(s.index)}
+            className={`px-3 py-1.5 rounded-t text-sm font-medium transition-colors ${
+              sheetIndex === s.index
+                ? 'bg-blue-100 text-blue-700 border border-b-0 border-blue-200 -mb-px'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+            }`}
+          >
+            {s.name}
+          </button>
+        ))}
+      </div>
+      <div className="overflow-auto max-h-[65vh]">
+        {loadingPreview ? (
+          <div className="text-gray-500 text-center py-6 text-sm">시트 로딩 중...</div>
+        ) : (
+          <>
+            <p className="text-xs text-gray-500 mb-2">시트: {preview?.sheet_name ?? sheets[sheetIndex]?.name}</p>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  {header.map((cell, i) => (
+                    <th
+                      key={i}
+                      className="border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-medium"
+                    >
+                      {cell}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, ri) => (
+                  <tr key={ri}>
+                    {row?.map((cell, ci) => (
+                      <td
+                        key={ci}
+                        className="border border-gray-200 px-2 py-1 text-gray-800"
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -267,36 +307,95 @@ function DocumentViewer({ document }: { document: Document }) {
   )
 }
 
+/** Parse chunk text into rows/columns: split by tab or 2+ spaces. */
+function parseChunkAsTable(text: string): string[][] | null {
+  const lines = text.split('\n').map((s) => s.trim()).filter(Boolean)
+  if (lines.length < 2) return null
+  const rows: string[][] = []
+  for (const line of lines) {
+    const cells = line.includes('\t')
+      ? line.split('\t').map((c) => c.trim())
+      : line.split(/\s{2,}/).map((c) => c.trim())
+    rows.push(cells)
+  }
+  const maxCols = Math.max(...rows.map((r) => r.length))
+  if (maxCols < 2) return null
+  return rows.map((r) => (r.length < maxCols ? [...r, ...Array(maxCols - r.length).fill('')] : r))
+}
+
 function ChunkCard({ chunk, index }: { chunk: ChunkItem; index: number }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
   const pages = chunk.metadata?.doc_page || []
   const category = chunk.metadata?.category || []
   const pageStr = pages.length > 0 ? `P.${pages.join(', ')}` : ''
-  const preview = chunk.chunk.slice(0, 200) + (chunk.chunk.length > 200 ? '...' : '')
+  const extra = (chunk.metadata as Record<string, unknown> | undefined)?.extra as { excel?: { sheet_name?: string } } | undefined
+  const sheetLabel = extra?.excel?.sheet_name ? ` · ${extra.excel.sheet_name}` : ''
+
+  const tableData = parseChunkAsTable(chunk.chunk)
 
   return (
-    <div className="border border-gray-200 rounded-xl p-4 bg-white hover:border-gray-300 transition-colors">
-      <div className="flex justify-between items-start gap-2 mb-2">
-        <span className="text-xs font-medium text-gray-500">
-          #{chunk.chunk_order + 1} {pageStr && `· ${pageStr}`}
+    <div className="border border-gray-200 rounded-xl bg-white hover:border-gray-300 transition-colors overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex justify-between items-center gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+      >
+        <span className="text-sm font-medium text-gray-700">
+          #{chunk.chunk_order + 1}
+          {pageStr && ` · ${pageStr}`}
           {category.length > 0 && ` · ${category.join(' > ')}`}
+          {sheetLabel}
         </span>
-        {chunk.score != null && (
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-            {chunk.score.toFixed(2)}
+        <span className="flex items-center gap-1 shrink-0 text-xs text-gray-500">
+          {chunk.score != null && (
+            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+              {chunk.score.toFixed(2)}
+            </span>
+          )}
+          <span className="inline-block w-5 h-5 text-gray-400" aria-hidden>
+            {expanded ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            )}
           </span>
-        )}
-      </div>
-      <div className="text-gray-800 text-sm">
-        {expanded ? chunk.chunk : preview}
-      </div>
-      {chunk.chunk.length > 200 && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="mt-2 text-xs text-blue-600 hover:text-blue-700"
-        >
-          {expanded ? '접기' : '펼치기'}
-        </button>
+        </span>
+      </button>
+      {expanded && (
+        <div className="text-gray-800 text-sm overflow-x-auto border-t border-gray-100 px-4 py-3">
+          {tableData ? (
+            <table className="w-full border-collapse text-sm tabular-nums">
+              <thead>
+                <tr>
+                  {tableData[0].map((cell, i) => (
+                    <th
+                      key={i}
+                      className="border border-gray-200 bg-gray-100 px-2 py-1.5 text-left font-medium whitespace-nowrap"
+                    >
+                      {cell}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tableData.slice(1).map((row, ri) => (
+                  <tr key={ri} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                    {row.map((cell, ci) => (
+                      <td
+                        key={ci}
+                        className="border border-gray-100 px-2 py-1.5 text-gray-800 break-words align-top"
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="whitespace-pre-wrap break-words">{chunk.chunk}</div>
+          )}
+        </div>
       )}
     </div>
   )

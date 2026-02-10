@@ -48,10 +48,10 @@ async def upload_document_from_url(request: DocumentCreate):
     )
 
 
-@router.get("/documents/{document_id}/xlsx-preview")
-async def get_document_preview(document_id: str):
-    """Get xlsx preview (first sheet as table data). Returns 404 for non-xlsx."""
-    document = document_service.get_by_id(document_id)
+def _get_xlsx_workbook(document):
+    """Validate document is xlsx and return open workbook. Caller must close."""
+    from pathlib import Path
+    from openpyxl import load_workbook
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     ft = (document.file_type or "").strip().lower()
@@ -60,22 +60,41 @@ async def get_document_preview(document_id: str):
             status_code=404,
             detail=f"Preview only supported for xlsx (document type is '{document.file_type}')",
         )
-    from pathlib import Path
     if not Path(document.file_path).is_file():
         raise HTTPException(status_code=404, detail="File not found on server")
+    return load_workbook(document.file_path, read_only=True, data_only=True)
+
+
+@router.get("/documents/{document_id}/xlsx-sheets")
+async def get_document_xlsx_sheets(document_id: str):
+    """Get list of sheet names for xlsx. Returns 404 for non-xlsx."""
+    document = document_service.get_by_id(document_id)
+    wb = _get_xlsx_workbook(document)
     try:
-        from openpyxl import load_workbook
-        wb = load_workbook(document.file_path, read_only=True, data_only=True)
-        ws = wb.active
-        if not ws:
-            return {"sheet_name": "", "rows": []}
+        sheets = [{"index": i, "name": ws.title} for i, ws in enumerate(wb.worksheets)]
+        return {"sheets": sheets}
+    finally:
+        wb.close()
+
+
+@router.get("/documents/{document_id}/xlsx-preview")
+async def get_document_preview(document_id: str, sheet: int = 0):
+    """Get xlsx preview for one sheet (0-based index). Returns 404 for non-xlsx."""
+    document = document_service.get_by_id(document_id)
+    wb = _get_xlsx_workbook(document)
+    try:
+        if sheet < 0 or sheet >= len(wb.worksheets):
+            raise HTTPException(
+                status_code=400,
+                detail=f"sheet index must be 0..{len(wb.worksheets) - 1}",
+            )
+        ws = wb.worksheets[sheet]
         rows = []
         for row in ws.iter_rows(values_only=True):
             rows.append([str(c) if c is not None else "" for c in row])
+        return {"sheet_index": sheet, "sheet_name": ws.title, "rows": rows}
+    finally:
         wb.close()
-        return {"sheet_name": ws.title, "rows": rows}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read xlsx: {str(e)}")
 
 
 @router.get("/documents/{document_id}", response_model=DocumentResponse)

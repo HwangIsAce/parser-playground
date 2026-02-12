@@ -65,7 +65,9 @@ uv run python main.py
 # Terminal 4: Frontend
 cd playground/frontend
 NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
-```E2E test (when all services are running):
+```
+
+E2E test (when all services are running):
 ```bash
 cd playground
 uv run python scripts/e2e_chunking_test.py

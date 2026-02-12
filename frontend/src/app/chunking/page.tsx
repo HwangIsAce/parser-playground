@@ -6,11 +6,11 @@ import { startChunkingJob } from '@/lib/api'
 import type { ChunkingDocumentType } from '@/types'
 
 const DOCUMENT_TYPES: { value: ChunkingDocumentType; label: string; ext: string; desc: string }[] = [
-  { value: 'heading', label: 'Heading', ext: '.pdf', desc: '제목 구조가 있는 문서' },
-  { value: 'plain', label: 'Plain', ext: '.pdf', desc: '일반 문서' },
-  { value: 'slide', label: 'Slide', ext: '.pdf', desc: '슬라이드 문서' },
-  { value: 'lifelog', label: 'Lifelog', ext: '.txt', desc: '5W1H 형식 일지' },
-  { value: 'excel', label: 'Excel', ext: '.xlsx', desc: '스프레드시트' },
+  { value: 'heading', label: 'Heading', ext: '.pdf', desc: 'Document with heading structure' },
+  { value: 'plain', label: 'Plain', ext: '.pdf', desc: 'General document' },
+  { value: 'slide', label: 'Slide', ext: '.pdf', desc: 'Slide / presentation' },
+  { value: 'lifelog', label: 'Lifelog', ext: '.txt', desc: '5W1H-style daily log' },
+  { value: 'excel', label: 'Excel', ext: '.xlsx', desc: 'Spreadsheet' },
 ]
 
 const TYPE_TO_EXT: Record<ChunkingDocumentType, string> = {
@@ -99,26 +99,20 @@ export default function ChunkingPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-8 py-12">
+        {/* Header — Parsing 페이지와 동일 */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Chunking</h1>
           <p className="text-gray-600">
-            문서를 업로드하여 청크 단위로 분할합니다. (RAG/임베딩용)
+            Upload a document to split it into chunks.
           </p>
-          {process.env.NODE_ENV === 'development' && (
-            <p className="text-xs text-gray-400 mt-2 font-mono">
-              API: {typeof window !== 'undefined'
-                ? (process.env.NEXT_PUBLIC_API_URL || '(relative /api/v1 → rewrite)')
-                : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}
-            </p>
-          )}
         </div>
 
-        {/* Document Type Selection */}
+        {/* Document Type Selection — Parsing Mode 선택과 동일 카드 스타일 */}
         <div className="mb-8">
           <label className="block text-sm font-semibold text-gray-700 mb-4">
-            문서 유형
+            Document Type
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {DOCUMENT_TYPES.map((dt) => (
               <button
                 key={dt.value}
@@ -130,19 +124,33 @@ export default function ChunkingPage() {
                   if (fileInputRef.current) fileInputRef.current.value = ''
                 }}
                 className={`
-                  relative p-4 rounded-xl border-2 transition-all duration-200 text-left
+                  relative p-6 rounded-xl border-2 transition-all duration-200 text-left
                   ${
                     documentType === dt.value
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/20'
                       : 'border-gray-200 bg-white hover:border-gray-300'
                   }
                 `}
               >
-                <div className="font-semibold text-gray-900">{dt.label}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{dt.ext}</div>
-                <div className="text-xs text-gray-600 mt-1">{dt.desc}</div>
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`
+                      w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0
+                      ${documentType === dt.value ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}
+                    `}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-gray-900">{dt.label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{dt.ext}</div>
+                    <div className="text-xs text-gray-600 mt-1">{dt.desc}</div>
+                  </div>
+                </div>
                 {documentType === dt.value && (
-                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
                     <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
@@ -151,12 +159,9 @@ export default function ChunkingPage() {
               </button>
             ))}
           </div>
-          <p className="text-sm text-gray-500 mt-2">
-            선택한 유형에 맞는 확장자({allowedExt})로 파일을 업로드해주세요.
-          </p>
         </div>
 
-        {/* File Drop Zone */}
+        {/* Upload Section — Parsing과 동일 카드 + FileUploader 스타일 드롭존 */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div
             onDragOver={handleDragOver}
@@ -164,11 +169,18 @@ export default function ChunkingPage() {
             onDrop={handleDrop}
             onClick={() => !uploading && fileInputRef.current?.click()}
             className={`
-              border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer
-              ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
-              ${uploading ? 'opacity-50 pointer-events-none' : ''}
+              relative border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-300 overflow-hidden
+              ${isDragging
+                ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-purple-50 scale-[1.02] shadow-xl shadow-blue-500/20'
+                : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 hover:border-blue-400 hover:shadow-lg'
+              }
+              ${uploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}
             `}
           >
+            {isDragging && (
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 animate-pulse" />
+            )}
+
             <input
               ref={fileInputRef}
               type="file"
@@ -180,45 +192,82 @@ export default function ChunkingPage() {
               disabled={uploading}
               className="hidden"
             />
-            {uploading ? (
-              <div className="space-y-4">
-                <div className="mx-auto w-16 h-16 border-4 border-blue-200 rounded-full border-t-blue-500 animate-spin" />
-                <p className="text-lg font-medium text-gray-700">업로드 및 Chunking 요청 중...</p>
-              </div>
-            ) : file ? (
-              <div className="space-y-4">
-                <div className="w-16 h-16 mx-auto bg-green-100 rounded-xl flex items-center justify-center">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+
+            <div className="relative z-10 pointer-events-none">
+              {uploading ? (
+                <div className="space-y-6">
+                  <div className="relative mx-auto w-20 h-20">
+                    <div className="absolute inset-0 border-4 border-blue-200 rounded-full" />
+                    <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-700">Uploading...</p>
+                    <p className="text-sm text-gray-500 mt-1">업로드 및 Chunking 요청 중...</p>
+                  </div>
                 </div>
-                <p className="font-semibold text-gray-900">{file.name}</p>
-                <p className="text-sm text-gray-500">{formatFileSize(file.size)}</p>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setFile(null)
-                    if (fileInputRef.current) fileInputRef.current.value = ''
-                  }}
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  다른 파일 선택
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-xl flex items-center justify-center">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+              ) : file ? (
+                <div className="space-y-4">
+                  <div className="relative inline-block">
+                    <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                      <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xl font-semibold text-gray-900 mb-1">{file.name}</p>
+                    <p className="text-sm text-gray-500">{formatFileSize(file.size)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFile(null)
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors pointer-events-auto"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Choose different file
+                  </button>
                 </div>
-                <p className="text-lg font-medium text-gray-700">
-                  {isDragging ? '여기에 놓으세요' : '파일을 드래그하거나 클릭하여 선택'}
-                </p>
-                <p className="text-sm text-gray-500">{allowedExt} (문서 유형: {documentType})</p>
-              </div>
-            )}
+              ) : (
+                <div className="space-y-6">
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full blur-2xl opacity-30 animate-pulse" />
+                    <div className="relative w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-2xl transform transition-transform hover:scale-110">
+                      <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900 mb-2">
+                      {isDragging ? 'Drop your file here' : 'Drag and drop your file'}
+                    </p>
+                    <p className="text-gray-600 mb-4">or click to browse from your computer</p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg">
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <span className="text-sm font-medium text-gray-700">Browse Files</span>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">
+                      Accepted: {allowedExt} for type {documentType}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {error && (
@@ -228,13 +277,33 @@ export default function ChunkingPage() {
           )}
 
           {file && !uploading && (
-            <div className="mt-6 flex justify-end">
+            <div className="mt-8 flex justify-end">
               <button
                 onClick={handleUpload}
                 disabled={!canProceed}
-                className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className={`
+                  group relative px-8 py-3 rounded-xl font-semibold text-white
+                  transition-all duration-200 overflow-hidden
+                  ${canProceed
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105 cursor-pointer'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }
+                `}
               >
-                Chunking 시작
+                {canProceed && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                )}
+                <span className="relative flex items-center gap-2">
+                  Chunking 시작
+                  <svg
+                    className={`w-5 h-5 transition-transform ${canProceed ? 'group-hover:translate-x-1' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
               </button>
             </div>
           )}

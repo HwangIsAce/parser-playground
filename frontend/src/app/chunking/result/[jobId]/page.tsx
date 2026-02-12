@@ -101,53 +101,81 @@ export default function ChunkingResultPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="px-8 py-6 border-b bg-white flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-900">
-          Chunking 결과 {document?.filename && `· ${document.filename}`}
-        </h1>
-        <button
-          onClick={() => router.push('/chunking')}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
-        >
-          새 파일
-        </button>
-      </div>
-
-      {/* 왼쪽 원본 | 오른쪽 청킹 결과 — 완전 분리 */}
-      <div className="grid grid-cols-2 h-[calc(100vh-80px)] w-full">
-        {/* 왼쪽: 원본 */}
-        <section className="border-r-2 border-gray-300 bg-white overflow-hidden flex flex-col min-h-0">
-          <div className="overflow-auto p-6 flex-1 min-h-0">
-            {document && (
-              <DocumentViewer document={document} />
-            )}
-            {!document && error && (
-              <div className="text-gray-500 text-center py-12">문서를 불러올 수 없습니다.</div>
-            )}
+      <div className="max-w-7xl mx-auto px-8 py-12">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Chunking 결과</h1>
+            <p className="text-gray-600">{document?.filename}</p>
           </div>
-        </section>
+          <button
+            onClick={() => router.push('/chunking')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            New File
+          </button>
+        </div>
 
-        {/* 오른쪽: 청킹 결과 */}
-        <section className="bg-gray-50 overflow-hidden flex flex-col min-h-0">
-          <div className="overflow-auto p-6 flex-1 min-h-0">
-            {loading ? (
-              <div className="flex items-center gap-3 text-gray-600">
-                <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-                <span>Chunking 처리 중...</span>
-              </div>
-            ) : error ? (
-              <div className="text-red-600">{error}</div>
-            ) : chunks.length === 0 ? (
-              <div className="text-gray-500">청크가 없습니다.</div>
-            ) : (
-              <div className="space-y-4">
-                {chunks.map((c, idx) => (
-                  <ChunkCard key={c.uuid || idx} chunk={c} index={idx} />
-                ))}
-              </div>
-            )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-w-0">
+            <div className="flex items-center gap-2 mb-4">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h2 className="text-xl font-semibold text-gray-900">Original Document</h2>
+            </div>
+            <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 min-h-[300px] max-h-[75vh] overflow-auto">
+              {document && <DocumentViewer document={document} />}
+              {!document && error && (
+                <div className="text-gray-500 text-center py-12 p-6">문서를 불러올 수 없습니다.</div>
+              )}
+            </div>
           </div>
-        </section>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-w-0">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <h2 className="text-xl font-semibold text-gray-900">Chunking Result</h2>
+              </div>
+              {!loading && chunks.length > 0 && (
+                <span className="text-sm text-gray-500">{chunks.length} chunk{chunks.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+            <div className="min-h-[300px] max-h-[75vh] overflow-auto min-w-0">
+              {loading ? (
+                <div className="flex items-center gap-3 text-gray-600 py-8">
+                  <div className="relative w-6 h-6">
+                    <div className="absolute inset-0 border-2 border-blue-200 rounded-full" />
+                    <div className="absolute inset-0 border-2 border-blue-500 rounded-full border-t-transparent animate-spin" />
+                  </div>
+                  <span>Chunking 처리 중...</span>
+                </div>
+              ) : error ? (
+                <div className="flex items-center gap-3 text-red-600 py-4">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              ) : chunks.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <p>청크가 없습니다.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {chunks.map((c, idx) => (
+                    <ChunkCard key={c.uuid || idx} chunk={c} index={idx} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -334,35 +362,41 @@ function ChunkCard({ chunk, index }: { chunk: ChunkItem; index: number }) {
   const tableData = parseChunkAsTable(chunk.chunk)
 
   return (
-    <div className="border border-gray-200 rounded-xl bg-white hover:border-gray-300 transition-colors overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setExpanded((e) => !e)}
-        className="w-full flex justify-between items-center gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-      >
-        <span className="text-sm font-medium text-gray-700">
-          #{chunk.chunk_order + 1}
-          {pageStr && ` · ${pageStr}`}
-          {category.length > 0 && ` · ${category.join(' > ')}`}
-          {sheetLabel}
-        </span>
-        <span className="flex items-center gap-1 shrink-0 text-xs text-gray-500">
-          {chunk.score != null && (
-            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-              {chunk.score.toFixed(2)}
+    <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition-all bg-white">
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-blue-100 text-blue-600">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="w-full flex justify-between items-center gap-2 text-left hover:opacity-80 transition-opacity"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">chunk</span>
+              <span className="text-sm font-medium text-gray-700">
+                #{chunk.chunk_order + 1}
+                {pageStr && ` · ${pageStr}`}
+                {category.length > 0 && ` · ${category.join(' > ')}`}
+                {sheetLabel}
+              </span>
+            </div>
+            <span className="flex items-center gap-1 shrink-0 text-gray-400" aria-hidden>
+              {chunk.score != null && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{chunk.score.toFixed(2)}</span>
+              )}
+              {expanded ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              )}
             </span>
-          )}
-          <span className="inline-block w-5 h-5 text-gray-400" aria-hidden>
-            {expanded ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            )}
-          </span>
-        </span>
-      </button>
-      {expanded && (
-        <div className="text-gray-800 text-sm overflow-x-auto border-t border-gray-100 px-4 py-3">
+          </button>
+          {expanded && (
+            <div className="text-gray-800 text-sm overflow-x-auto mt-3">
           {tableData ? (
             <table className="w-full border-collapse text-sm tabular-nums">
               <thead>
@@ -395,8 +429,10 @@ function ChunkCard({ chunk, index }: { chunk: ChunkItem; index: number }) {
           ) : (
             <div className="whitespace-pre-wrap break-words">{chunk.chunk}</div>
           )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

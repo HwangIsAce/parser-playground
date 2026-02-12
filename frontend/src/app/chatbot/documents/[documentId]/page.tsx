@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { pageindexGetToc, pageindexQuery } from '@/lib/api'
 import type {
@@ -31,6 +31,8 @@ function TocTree({
         return (
           <li key={key} className="py-0.5">
             <div
+              data-doc-id={node.doc_id}
+              data-node-id={node.node_id}
               className={`
                 rounded px-2 py-1 text-sm
                 ${highlighted
@@ -73,6 +75,19 @@ export default function ChatbotDocumentPage() {
   // Highlight only the latest answer's retrieved_nodes
   const [highlightedNodes, setHighlightedNodes] = useState<PageIndexRetrievedNode[]>([])
   const highlightSet = new Set(highlightedNodes.map((n) => tocNodeKey(n.doc_id, n.node_id)))
+  const tocScrollRef = useRef<HTMLDivElement>(null)
+
+  // Scroll TOC so first highlighted node is in the vertical center of the right panel
+  useEffect(() => {
+    if (highlightedNodes.length === 0 || !tocScrollRef.current) return
+    const first = highlightedNodes[0]
+    const el = tocScrollRef.current.querySelector(
+      `[data-doc-id="${first.doc_id}"][data-node-id="${first.node_id}"]`
+    )
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [highlightedNodes])
 
   const loadToc = useCallback(async () => {
     if (!documentId) return
@@ -127,7 +142,7 @@ export default function ChatbotDocumentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
       <header className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
@@ -142,10 +157,10 @@ export default function ChatbotDocumentPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* Left: Chat */}
-        <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 bg-white">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+        {/* Left: Chat — messages scroll, input fixed at bottom of viewport */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-gray-200 bg-white">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
             {messages.length === 0 && !queryLoading && (
               <p className="text-gray-500 text-sm">Ask a question about this document.</p>
             )}
@@ -178,11 +193,11 @@ export default function ChatbotDocumentPage() {
             )}
           </div>
           {queryError && (
-            <div className="px-4 py-2 bg-red-50 border-t border-red-100">
+            <div className="flex-shrink-0 px-4 py-2 bg-red-50 border-t border-red-100">
               <p className="text-sm text-red-600">{queryError}</p>
             </div>
           )}
-          <form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-gray-200">
+          <form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -203,9 +218,9 @@ export default function ChatbotDocumentPage() {
           </form>
         </div>
 
-        {/* Right: TOC */}
-        <aside className="w-full lg:w-80 flex-shrink-0 flex flex-col bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200">
-          <div className="p-3 border-b border-gray-200 bg-white">
+        {/* Right: TOC — scroll so highlighted node is in vertical center */}
+        <aside className="w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200">
+          <div className="flex-shrink-0 p-3 border-b border-gray-200 bg-white">
             <h2 className="text-sm font-semibold text-gray-900">Table of contents</h2>
             {highlightedNodes.length > 0 && (
               <p className="text-xs text-amber-700 mt-1">
@@ -213,7 +228,7 @@ export default function ChatbotDocumentPage() {
               </p>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
+          <div ref={tocScrollRef} className="flex-1 overflow-y-auto p-3 min-h-0">
             {tocError && (
               <p className="text-sm text-red-600">{tocError}</p>
             )}

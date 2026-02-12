@@ -43,6 +43,7 @@ async def pageindex_upload_documents(
     files: list[UploadFile] = File(..., description="PDF files"),
 ):
     """Proxy POST /documents to PageIndex. Returns 202 with job_id."""
+    logger.info("pageindex: POST /documents files=%d", len(files))
     pdfs = [f for f in files if f.filename and f.filename.lower().endswith(".pdf")]
     if not pdfs:
         raise HTTPException(400, "At least one PDF file is required")
@@ -61,6 +62,7 @@ async def pageindex_upload_documents(
 @router.get("/pageindex/jobs/{job_id}")
 async def pageindex_get_job(job_id: str):
     """Proxy GET /jobs/{job_id} to PageIndex."""
+    logger.debug("pageindex: GET /jobs/%s", job_id)
     try:
         return client.get_job(job_id)
     except PageIndexClientError as e:

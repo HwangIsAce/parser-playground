@@ -65,7 +65,7 @@ export default function ChatbotResultPage() {
         <div className="text-center">
           <div className="mx-auto w-16 h-16 border-4 border-blue-200 rounded-full border-t-blue-500 animate-spin mb-4" />
           <p className="text-gray-600">
-            {status ? `Indexing... (${status.status})` : 'Loading...'}
+            {status ? 'processing..' : 'Loading...'}
           </p>
           {status?.message && (
             <p className="text-sm text-gray-500 mt-2">{status.message}</p>

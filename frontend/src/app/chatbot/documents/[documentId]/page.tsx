@@ -42,8 +42,8 @@ function TocTree({
               <span className="text-gray-500 font-mono mr-2">{node.structure}</span>
               {node.title}
             </div>
-            {node.nodes.length > 0 && (
-              <TocTree nodes={node.nodes} highlightSet={highlightSet} depth={depth + 1} />
+            {(node.nodes?.length ?? 0) > 0 && (
+              <TocTree nodes={node.nodes ?? []} highlightSet={highlightSet} depth={depth + 1} />
             )}
           </li>
         )

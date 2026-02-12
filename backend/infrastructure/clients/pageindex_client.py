@@ -62,6 +62,7 @@ class PageIndexClient:
         if not files:
             raise PageIndexClientError("At least one PDF file is required")
         url = f"{self.base_url}/documents"
+        logger.info("PageIndex → %s (POST, files=%d)", url, len(files))
         # PageIndex expects multiple files under "files" (plural)
         file_tuples = [(f"files", (name, content)) for name, content in files]
         with httpx.Client(timeout=self.timeout) as client:
@@ -73,6 +74,7 @@ class PageIndexClient:
     def get_job(self, job_id: str) -> Dict[str, Any]:
         """GET /jobs/{job_id}."""
         url = f"{self.base_url}/jobs/{job_id}"
+        logger.debug("PageIndex → GET %s", url)
         with httpx.Client(timeout=self.timeout) as client:
             response = client.get(url)
         if response.status_code == 404:

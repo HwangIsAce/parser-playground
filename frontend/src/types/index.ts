@@ -101,3 +101,54 @@ export interface ChunkingStatusResponse {
   error?: string | null
   created_at: string
 }
+
+// PageIndex (Chatbot) types
+export type PageIndexJobStatus = 'processing' | 'completed' | 'failed'
+
+export interface PageIndexJobResponse {
+  job_id: string
+  status: PageIndexJobStatus
+  document_id: string | null
+  error: string | null
+  progress: number
+  message: string
+}
+
+export interface PageIndexDocumentSummary {
+  id: string
+  name: string
+  doc_count: number
+  created_at: string
+}
+
+export interface PageIndexTocNode {
+  node_id: string
+  structure: string
+  title: string
+  start_index: number
+  end_index: number
+  doc_id: string
+  nodes: PageIndexTocNode[]
+}
+
+export interface PageIndexTocDoc {
+  doc_id: string
+  doc_name: string
+  structure: PageIndexTocNode[]
+}
+
+export interface PageIndexTocResponse {
+  doc_structures: PageIndexTocDoc[]
+}
+
+export interface PageIndexRetrievedNode {
+  doc_id: string
+  node_id: string
+  structure: string
+  title: string
+}
+
+export interface PageIndexQueryResponse {
+  answer: string
+  retrieved_nodes: PageIndexRetrievedNode[]
+}

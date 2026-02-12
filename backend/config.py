@@ -64,7 +64,11 @@ class Settings(BaseSettings):
     # Peter-parser API Settings (Chunking) — POST /parse, GET /status, GET /result
     PETER_PARSER_BASE_URL: str = "http://localhost:8001"
     PETER_PARSER_TIMEOUT: int = 90  # Timeout for POST /parse (read); Excel ~10s, allow margin
-    
+
+    # PageIndex API Settings (Chatbot) — upload, jobs, documents, toc, query
+    PAGEINDEX_BASE_URL: str = "http://localhost:8002"
+    PAGEINDEX_TIMEOUT: int = 120  # Upload and indexing can be slow
+
     class Config:
         """Pydantic config."""
         env_file = ".env"

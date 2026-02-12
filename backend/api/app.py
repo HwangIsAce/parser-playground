@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.routes import documents, parse, jobs, chunking
+from api.routes import documents, parse, jobs, chunking, pageindex
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,12 @@ def create_app() -> FastAPI:
         prefix="/api/v1",
         tags=["chunking"],
     )
-    
+    app.include_router(
+        pageindex.router,
+        prefix="/api/v1",
+        tags=["pageindex"],
+    )
+
     # Root endpoint
     @app.get("/")
     async def root():

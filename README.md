@@ -89,3 +89,30 @@ uv run python scripts/e2e_chunking_test.py
    - `cd pipelines/parsing-pipeline/peter-parser && uv run python main.py`
 
 이렇게 하면 흐름이 **브라우저 → localhost:8000(Playground) → localhost:8001(Peter-parser)** 가 되어, 모두 같은 머신의 localhost로 통신합니다.
+
+### Chatbot (PageIndex API)
+
+Chatbot을 사용하려면 **Playground 백엔드**와 **PageIndex API** 서버가 먼저 실행되어 있어야 합니다.
+
+| 서버 | 포트 | 역할 |
+|------|------|------|
+| Playground 백엔드 | 8000 | 프론트 요청 수신, PageIndex로 프록시 |
+| PageIndex API | 8002 | 문서 업로드·인덱싱·TOC·RAG 질의 |
+
+**실행 순서 (로컬 예시):**
+
+```bash
+# Terminal 1: PageIndex API (port 8002). 경로는 PageIndex 프로젝트 위치에 맞게 수정.
+cd ../modules/PageIndex   # playground와 modules가 같은 상위 디렉터리인 경우
+PYTHONPATH=src uv run python -m uvicorn api.main:app --host 0.0.0.0 --port 8002 --reload
+
+# Terminal 2: Playground backend (port 8000)
+cd playground/backend
+uv run python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 3: Frontend
+cd playground/frontend
+NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
+```
+
+- API 명세: [docs/API.md](docs/API.md)

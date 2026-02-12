@@ -2,6 +2,7 @@
 
 import { useState, useRef, DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { pageindexUploadDocuments } from '@/lib/api'
 
 const PDF_ACCEPT = '.pdf'
@@ -83,11 +84,19 @@ export default function ChatbotPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-8 py-12">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Chatbot</h1>
-          <p className="text-gray-600">
-            Upload one or more PDFs to index and chat with your documents.
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Chatbot</h1>
+            <p className="text-gray-600">
+              Upload one or more PDFs to index and chat with your documents.
+            </p>
+          </div>
+          <Link
+            href="/chatbot/list"
+            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            View indexed documents
+          </Link>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
